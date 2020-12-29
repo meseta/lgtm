@@ -15,7 +15,6 @@ on:
 jobs:
   test:
     name: Run tests
-    environment: Prod
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -66,7 +65,7 @@ jobs:
       - name: Deploy Cloud Function
         uses: google-github-actions/deploy-cloud-functions@v0.1.2
         with:
-          project: ${{ secrets.GCP_PROJECT }}
+          project_id: ${{ secrets.GCP_PROJECT }}
           credentials: ${{ secrets.GCP_CREDENTIALS }}
           service_account_email: ${{ secrets.GCP_FUNCTIONS_SERVICE_ACCOUNT }}
           source_dir: ./github_webhook_listener/app
