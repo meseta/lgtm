@@ -48,6 +48,7 @@ jobs:
   
   deploy:
     name: Deploy
+    needs: test
     if: ${{ !github.event.issue.pull_request }}
     environment: Prod
     runs-on: ubuntu-latest
