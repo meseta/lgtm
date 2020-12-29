@@ -3,14 +3,14 @@ name: Build GitHub Webhook Listener
 on:
   push:
     branches:
-      - ci_test
-  #   paths:
-  #     - 'github_webhook_listener/**'
-  # pull_request:
-  #   branches:
-  #     - ci_test
-  #   paths:
-  #     - 'github_webhook_listener/**'
+      - main
+    paths:
+      - 'github_webhook_listener/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'github_webhook_listener/**'
 
 jobs:
   test:
