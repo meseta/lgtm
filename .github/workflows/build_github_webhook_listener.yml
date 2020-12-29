@@ -1,0 +1,77 @@
+name: Build GitHub Webhook Listener
+
+on:
+  push:
+    branches:
+      - ci_test
+  #   paths:
+  #     - 'github_webhook_listener/**'
+  # pull_request:
+  #   branches:
+  #     - ci_test
+  #   paths:
+  #     - 'github_webhook_listener/**'
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install dependencies
+        working-directory: ./github_webhook_listener
+        run: |
+          pip install pipenv
+          pipenv install --deploy --dev
+
+      - name: Run tests
+        working-directory: ./github_webhook_listener
+        run: pipenv run test
+
+      - name: Generate requirements.txt
+        working-directory: ./github_webhook_listener
+        run: pipenv lock -r > app/requirements.txt
+
+      - name: Upload requirements.txt
+        uses: actions/upload-artifact@v2
+        with:
+          name: requirements.txt
+          path: ./github_webhook_listener/app/requirements.txt
+  
+  deploy:
+    name: Deploy
+    if: ${{ github.event.issue.pull_request }}
+    environment: Prod
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Download requirements.txt
+        uses: actions/download-artifact@v2
+        with:
+          name: requirements.txt
+          path: ./github_webhook_listener/app/requirements.txt
+        
+        # note: does not set to "allow unauthenticated" or memory, deploy manually first
+      - name: Deploy Cloud Function
+        uses: google-github-actions/deploy-cloud-functions@v0.1.2
+        working-directory: ./github_webhook_listener/app
+        with:
+          project: ${{ secrets.GCP_PROJECT }}
+          credentials: ${{ secrets.GCP_CREDENTIALS }}
+          service_account_email: ${{ secrets.GCP_FUNCTIONS_SERVICE_ACCOUNT }}
+          name: github_webhook_listener
+          entry_point: github_webhook_listener
+          runtime: python39
+          env_vars:
+            - WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}
+          
+
