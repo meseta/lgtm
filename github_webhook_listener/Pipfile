@@ -5,7 +5,8 @@ name = "pypi"
 
 [scripts]
 test = "pytest"
-serve = "functions-framework --port 5000 --target "
+serve = "functions-framework --port 5000 --target github_webhook_listener"
+deploy = "./deploy.sh"
 
 [packages]
 pydantic = "*"
