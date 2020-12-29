@@ -10,6 +10,11 @@ TEST_FILES = os.path.join(
     "test_files",
 )
 
+FUNCTION_SOURCE = "app/main.py"
+
+# set the environment to the right secret. This is what the test cases were recorded with
+os.environ["WEBHOOK_SECRET"] = "this_is_a_secret"
+
 
 class Payload:  # pylint: disable=too-few-public-methods
     """ Container for holding header/payload pairs during testing"""
@@ -37,6 +42,4 @@ def bad_fork():
 @pytest.fixture(scope="package")
 def client():
     """ Test client """
-    return create_app(
-        "github_webhook_listener", os.environ["FUNCTION_SOURCE"]
-    ).test_client()
+    return create_app("github_webhook_listener", FUNCTION_SOURCE).test_client()
