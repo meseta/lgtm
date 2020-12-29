@@ -59,7 +59,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: requirements.txt
-          path: ./github_webhook_listener/app/requirements.txt
+          path: ./github_webhook_listener/app
         
         # note: does not set to "allow unauthenticated" or memory, deploy manually first
       - name: Deploy Cloud Function
