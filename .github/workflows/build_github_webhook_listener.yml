@@ -42,7 +42,7 @@ jobs:
       - name: Upload requirements.txt
         uses: actions/upload-artifact@v2
         with:
-          name: requirements.txt
+          name: requirements
           path: ./github_webhook_listener/app/requirements.txt
   
   deploy:
@@ -58,7 +58,7 @@ jobs:
       - name: Download requirements.txt
         uses: actions/download-artifact@v2
         with:
-          name: requirements.txt
+          name: requirements
           path: ./github_webhook_listener/app
         
         # note: does not set to "allow unauthenticated" or memory, deploy manually first
