@@ -47,7 +47,7 @@ jobs:
   
   deploy:
     name: Deploy
-    if: ${{ github.event.issue.pull_request }}
+    if: ${{ !github.event.issue.pull_request }}
     environment: Prod
     runs-on: ubuntu-latest
     steps:
