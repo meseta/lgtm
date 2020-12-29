@@ -26,24 +26,24 @@ jobs:
           python-version: 3.9
 
       - name: Install dependencies
-        working-directory: ./github_webhook_listener
+        working-directory: "./github_webhook_listener"
         run: |
           pip install pipenv
           pipenv install --deploy --dev
 
       - name: Run tests
-        working-directory: ./github_webhook_listener
+        working-directory: "./github_webhook_listener"
         run: pipenv run test
 
       - name: Generate requirements.txt
-        working-directory: ./github_webhook_listener
+        working-directory: "./github_webhook_listener"
         run: pipenv lock -r > app/requirements.txt
 
       - name: Upload requirements.txt
         uses: actions/upload-artifact@v2
         with:
           name: requirements.txt
-          path: ./github_webhook_listener/app/requirements.txt
+          path: "./github_webhook_listener/app/requirements.txt"
   
   deploy:
     name: Deploy
@@ -58,12 +58,12 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: requirements.txt
-          path: ./github_webhook_listener/app/requirements.txt
+          path: "./github_webhook_listener/app/requirements.txt"
         
         # note: does not set to "allow unauthenticated" or memory, deploy manually first
       - name: Deploy Cloud Function
         uses: google-github-actions/deploy-cloud-functions@v0.1.2
-        working-directory: ./github_webhook_listener/app
+        working-directory: "./github_webhook_listener/app"
         with:
           project: ${{ secrets.GCP_PROJECT }}
           credentials: ${{ secrets.GCP_CREDENTIALS }}
