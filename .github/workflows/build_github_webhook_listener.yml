@@ -15,6 +15,7 @@ on:
 jobs:
   test:
     name: Run tests
+    environment: Prod
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
