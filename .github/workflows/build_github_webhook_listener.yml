@@ -71,7 +71,4 @@ jobs:
           name: github_webhook_listener
           entry_point: github_webhook_listener
           runtime: python39
-          env_vars:
-            - WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}
-          
-
+          env_vars: "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}"
