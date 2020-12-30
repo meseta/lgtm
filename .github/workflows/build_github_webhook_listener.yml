@@ -74,4 +74,4 @@ jobs:
           source_dir: ./github_webhook_listener/app
           name: github_webhook_listener
           runtime: python39
-          env_vars: "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }},APP_VERSION=${{ GITHUB_SHA }}"
+          env_vars: "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }},APP_VERSION=$GITHUB_SHA"
