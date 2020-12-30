@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - 'github_webhook_listener/**'
+      - '.github/workflows/build_github_webhook_listener.yml'
   pull_request:
     branches:
       - main
     paths:
       - 'github_webhook_listener/**'
+      - '.github/workflows/build_github_webhook_listener.yml'
 
 jobs:
   test:
