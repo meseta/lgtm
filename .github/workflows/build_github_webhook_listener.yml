@@ -27,15 +27,13 @@ jobs:
         with:
           python-version: 3.9
 
-      - name: Install dependencies
+      - name: Install dependencies and run tests
+        working-directory: ./github_webhook_listener
         run: |
           pip install pipenv
           pipenv install --deploy --dev
-
-      - name: Run tests
-        working-directory: ./github_webhook_listener
-        run: pipenv run test
-
+          pipenv run test
+          
       - name: Send test report
         uses: 5monkeys/cobertura-action@master
         if: github.event_name == 'pull_request'
