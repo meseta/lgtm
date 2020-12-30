@@ -1,5 +1,6 @@
 """ Listens to webhooks from GitHub """
 
+import os
 import structlog  # type: ignore
 from flask import Request, abort
 from pydantic import ValidationError
@@ -7,7 +8,7 @@ from pydantic import ValidationError
 from utils.verify import verify_signature
 from utils.models import GitHubHookFork
 
-logger = structlog.get_logger()
+logger = structlog.get_logger().bind(version=os.environ.get("APP_VERSION", "test"))
 
 OUR_REPO = "meseta/lgtm"
 

@@ -62,7 +62,7 @@ jobs:
       - name: Install pipenv and generate requiremetns.txt
         run: |
           pip install pipenv
-          pipenv istall --deploy
+          pipenv install --deploy
           pipenv lock -r > ./github_webhook_listener/app/requirements.txt
         
         # note: does not set to "allow unauthenticated" or memory, deploy manually first
@@ -74,4 +74,4 @@ jobs:
           source_dir: ./github_webhook_listener/app
           name: github_webhook_listener
           runtime: python39
-          env_vars: "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}"
+          env_vars: "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }},APP_VERSION=${{ GITHUB_SHA }}"
