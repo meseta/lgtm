@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - 'github_webhook_listener/**'
+      - '.github/workflows/build_github_webhook_listener.yml'
   pull_request:
     branches:
       - main
     paths:
       - 'github_webhook_listener/**'
+      - '.github/workflows/build_github_webhook_listener.yml'
 
 jobs:
   test:
@@ -25,27 +27,13 @@ jobs:
         with:
           python-version: 3.9
 
-      - name: Install dependencies
+      - name: Install dependencies and run tests
         working-directory: ./github_webhook_listener
         run: |
           pip install pipenv
           pipenv install --deploy --dev
-
-      - name: Run tests
-        working-directory: ./github_webhook_listener
-        run: pipenv run test
-
-      - name: Generate requirements.txt
-        working-directory: ./github_webhook_listener
-        run: pipenv lock -r > app/requirements.txt
-
-      - name: Upload requirements.txt
-        uses: actions/upload-artifact@v2
-        with:
-          name: requirements
-          path: ./github_webhook_listener/app/requirements.txt
-          retention-days: 2
-
+          pipenv run test
+          
       - name: Send test report
         uses: 5monkeys/cobertura-action@master
         if: github.event_name == 'pull_request'
@@ -59,18 +47,23 @@ jobs:
   deploy:
     name: Deploy
     needs: test
-    if: github.event.pull_request.merged == 'true' && github.event.action == 'closed'
+    if: github.event_name == 'push'
     environment: Prod
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Download requirements.txt
-        uses: actions/download-artifact@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
         with:
-          name: requirements
-          path: ./github_webhook_listener/app
+          python-version: 3.9
+
+      - name: Install pipenv and generate requiremetns.txt
+        run: |
+          pip install pipenv
+          pipenv istall --deploy
+          pipenv lock -r > ./github_webhook_listener/app/requirements.txt
         
         # note: does not set to "allow unauthenticated" or memory, deploy manually first
       - name: Deploy Cloud Function
@@ -80,6 +73,5 @@ jobs:
           service_account_email: ${{ secrets.GCP_FUNCTIONS_SERVICE_ACCOUNT }}
           source_dir: ./github_webhook_listener/app
           name: github_webhook_listener
-          entry_point: github_webhook_listener
           runtime: python39
           env_vars: "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}"
