@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# This script is for manual deploying
+
 if [[ -z "$WEBHOOK_SECRET" ]]; then
     echo "WEBHOOK_SECRET not set, run inside pipenv" 1>&2
     exit 1
