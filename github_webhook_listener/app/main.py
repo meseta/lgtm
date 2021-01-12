@@ -2,7 +2,7 @@
 
 import os
 import structlog  # type: ignore
-from flask import Request, abort
+from flask import Request, abort, jsonify
 from pydantic import ValidationError
 
 from utils.verify import verify_signature
@@ -19,17 +19,21 @@ def github_webhook_listener(request: Request):
     # verify
     if not verify_signature(request):
         logger.err("Invalid signature")
-        return abort(403, "Invalid signature")
+        return jsonify(error="Invalid signature"), 403
 
     # decode
     try:
         hook_fork = GitHubHookFork.parse_raw(request.data)
     except ValidationError as err:
         logger.err("Validation error", err=err)
-        return abort(400, "Validation error")
+        return jsonify(error="Validation error"), 400
 
     # output
     if hook_fork.repository.full_name == OUR_REPO:
         logger.info("Got fork", data=hook_fork.dict())
 
-    return "OK"
+        # TODO: create new game
+
+        # TODO: link game to user if found
+
+    return jsonify(status="ok")
