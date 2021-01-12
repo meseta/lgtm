@@ -1,3 +1,4 @@
+// matches /github_auth_flow/apps/utils/models.py
 export interface UserData {
   profileImage: string;
   name: string;

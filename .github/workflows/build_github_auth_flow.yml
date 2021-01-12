@@ -1,0 +1,82 @@
+name: Build GitHub Auth Flow
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'github_auth_flow/**'
+      - '.github/workflows/github_auth_flow.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'github_auth_flow/**'
+      - '.github/workflows/github_auth_flow.yml'
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install dependencies and run tests
+        working-directory: ./github_auth_flow
+        run: |
+          pip install pipenv
+          pipenv install --deploy --dev
+          pipenv run test
+          
+      - name: Send test report
+        uses: 5monkeys/cobertura-action@master
+        if: github.event_name == 'pull_request'
+        with:
+          path: ./github_auth_flow/coverage.xml
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          minimum_coverage: 95
+          skip_covered: False
+          show_line: True
+  
+  deploy:
+    name: Deploy
+    needs: test
+    if: github.event_name == 'push'
+    environment: Prod
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get short SHA
+        id: short_sha
+        run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-7)"
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install pipenv and generate requirements.txt
+        working-directory: ./github_auth_flow
+        run: |
+          pip install pipenv
+          pipenv install --deploy
+          pipenv lock -r > ./app/requirements.txt
+        
+        # note: does not set to "allow unauthenticated" or memory, deploy manually first
+      - name: Deploy Cloud Function
+        uses: google-github-actions/deploy-cloud-functions@v0.1.2
+        with:
+          credentials: ${{ secrets.GCP_CREDENTIALS }}
+          service_account_email: ${{ secrets.GCP_FUNCTIONS_SERVICE_ACCOUNT }}
+          source_dir: ./github_auth_flow/app
+          name: github_auth_flow
+          runtime: python39
+          env_vars: "WEB_API_KEY=${{ secrets.WEB_API_KEY }},APP_VERSION=${{ steps.short_sha.outputs.sha7 }}"

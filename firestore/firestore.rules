@@ -10,7 +10,8 @@ service cloud.firestore {
     }
     
     match /users/{uid} {
-      allow read, write: if isUser(uid);
+      allow read: if isUser(uid);
+      allow write: if false;
     }
     
     match /system/stats {

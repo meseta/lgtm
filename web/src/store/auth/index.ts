@@ -2,7 +2,7 @@ import router from '@/router'
 import { RootState } from '@/store/types';
 import { AuthState, UserData } from './types';
 import { GetterTree, MutationTree, ActionTree, Module} from 'vuex';
-import { firebase, firestore, auth as firebaseAuth } from '@/plugins/firebase'
+import { firebase, functions, firestore, auth as firebaseAuth } from '@/plugins/firebase'
 
 const state: AuthState = {
   uid: null,
@@ -52,8 +52,10 @@ const actions: ActionTree<AuthState, RootState>= {
       commit('setUid', uid);
       
       // TODO: replace with funtion call that validates accesstoken and sets up access to matching game session
-      return firestore.collection('users').doc(uid).set(userData, { merge: true });
-    }).finally(() => {
+      return functions.httpsCallable('github_auth_flow')({userData});
+      // return firestore.collection('users').doc(uid).set(userData, { merge: true });
+    })
+    .finally(() => {
       commit('alert/showSuccess', 'Successfully logged in', {root: true})
     }).catch((error) => {
       console.error(error);
