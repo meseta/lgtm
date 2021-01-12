@@ -3,11 +3,14 @@
 import os
 import structlog  # type: ignore
 from flask import Request, abort
-from pydantic import ValidationError
 
 import firebase_admin
-
-#from utils.models import GitHubHookFork
+from firebase_admin.auth import (
+    verify_id_token,
+    InvalidIdTokenError,
+    ExpiredIdTokenError,
+    RevokedIdTokenError,
+)
 
 CORS_HEADERS = {
     'Access-Control-Allow-Origin': 'https://lgtm.meseta.dev',
@@ -29,12 +32,14 @@ def github_auth_flow(request: Request):
     if request.method == 'OPTIONS':
         return ('', 204, CORS_HEADERS)
 
-    logger.info(request)
-    # # authenticate user
-    # try:
-    #     user = check_auth_user()
-    # except AuthError as err:
-    #     logger.err("Authentication error")
-    #     return abort(403, "Authentication error")
+    # authenticate user
+    token = request.headers.get("Authorization", "").removeprefix("Bearer ")
+    try:
+        decoded_token = verify_id_token(token)
+    except (ValueError, InvalidIdTokenError, ExpiredIdTokenError, RevokedIdTokenError) as err:
+        logger.warn("Authentication error", err=err)
+        return abort(403, "Authentication error")
+
+
 
     return ("OK", 200, CORS_HEADERS)
