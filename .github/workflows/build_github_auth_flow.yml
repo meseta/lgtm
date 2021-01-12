@@ -3,50 +3,50 @@ name: Build GitHub Auth Flow
 on:
   push:
     branches:
-      - user_validator
+      - main
     paths:
       - 'github_auth_flow/**'
       - '.github/workflows/github_auth_flow.yml'
-  # pull_request:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - 'github_webhook_listener/**'
-  #     - '.github/workflows/build_github_webhook_listener.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'github_auth_flow/**'
+      - '.github/workflows/github_auth_flow.yml'
 
 jobs:
-  # test:
-  #   name: Run tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v2
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
 
-  #     - name: Setup Python
-  #       uses: actions/setup-python@v2
-  #       with:
-  #         python-version: 3.9
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
 
-  #     - name: Install dependencies and run tests
-  #       working-directory: ./github_webhook_listener
-  #       run: |
-  #         pip install pipenv
-  #         pipenv install --deploy --dev
-  #         pipenv run test
+      - name: Install dependencies and run tests
+        working-directory: ./github_auth_flow
+        run: |
+          pip install pipenv
+          pipenv install --deploy --dev
+          pipenv run test
           
-  #     - name: Send test report
-  #       uses: 5monkeys/cobertura-action@master
-  #       if: github.event_name == 'pull_request'
-  #       with:
-  #         path: ./github_webhook_listener/coverage.xml
-  #         repo_token: ${{ secrets.GITHUB_TOKEN }}
-  #         minimum_coverage: 95
-  #         skip_covered: False
-  #         show_line: True
+      - name: Send test report
+        uses: 5monkeys/cobertura-action@master
+        if: github.event_name == 'pull_request'
+        with:
+          path: ./github_auth_flow/coverage.xml
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          minimum_coverage: 95
+          skip_covered: False
+          show_line: True
   
   deploy:
     name: Deploy
-    #needs: test
+    needs: test
     if: github.event_name == 'push'
     environment: Prod
     runs-on: ubuntu-latest
@@ -79,3 +79,4 @@ jobs:
           source_dir: ./github_auth_flow/app
           name: github_auth_flow
           runtime: python39
+          env_vars: "WEB_API_KEY=${{ secrets.WEB_API_KEY }},APP_VERSION=${{ steps.short_sha.outputs.sha7 }}"

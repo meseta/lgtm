@@ -15,4 +15,5 @@ gcloud functions deploy github_auth_flow \
     --allow-unauthenticated \
     --memory=128MB \
     --source app \
+    --set-env-vars=WEB_API_KEY=$WEB_API_KEY \
     --service-account=$GCP_FUNCTIONS_SERVICE_ACCOUNT

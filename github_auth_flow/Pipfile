@@ -12,6 +12,7 @@ deploy = "./deploy.sh"
 pydantic = "*"
 structlog = "*"
 firebase-admin = "*"
+pygithub = "*"
 
 [dev-packages]
 mypy = "*"
