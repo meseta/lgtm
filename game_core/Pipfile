@@ -12,6 +12,7 @@ deploy = "./deploy.sh"
 pydantic = "*"
 structlog = "*"
 google-cloud-functions = "*"
+semver = "*"
 
 [dev-packages]
 mypy = "*"

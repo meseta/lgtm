@@ -2,10 +2,10 @@
 
 import os
 import structlog  # type: ignore
-from google.cloud.functions import Context
+from google.cloud.functions.context import Context
 
 logger = structlog.get_logger().bind(version=os.environ.get("APP_VERSION", "test"))
-logger.info("Started", our_repo=OUR_REPO)
+logger.info("Started")
 
 def game_core(event: dict, context: Context):
     """ Game core """
