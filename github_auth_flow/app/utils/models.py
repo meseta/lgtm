@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, Extra  # pylint: disable=no-name-in-modul
 # pylint: disable=too-few-public-methods,missing-class-docstring
 class UserData(BaseModel):
     """ Matches /web/src/store/auth/types.ts """
+
     profileImage: str = Field(..., title="Profile pic URL")
     name: str = Field(..., title="Real name")
     handle: str = Field(..., title="Username")

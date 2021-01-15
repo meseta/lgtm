@@ -13,6 +13,7 @@ pydantic = "*"
 structlog = "*"
 google-cloud-functions = "*"
 semver = "*"
+firebase-admin = "*"
 
 [dev-packages]
 mypy = "*"

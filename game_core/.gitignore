@@ -1,6 +1,9 @@
 # requirements.txt should get generated at deploy time
 /app/requirements.txt
 
+# service account for testing
+service_account.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
