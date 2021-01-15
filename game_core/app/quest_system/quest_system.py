@@ -1,5 +1,7 @@
+from copy import deepcopy
+from typing import Protocol, ClassVar, Any, Dict
 from enum import Enum
-from semver import VersionInfo
+from semver import VersionInfo # type:  ignore
 
 from .exceptions import QuestLoadError
 
@@ -27,35 +29,33 @@ def semver_safe(start: VersionInfo, dest: VersionInfo) -> bool:
     return True
 
 
-class Quest:
-    def __init__(
-        self,
-        name: str,
-        version: str,
-        difficulty: Difficulty,
-        description: str,
-        default_data: dict,
-    ):
-        self.name = name
-        self.semver = VersionInfo.parse(version)
-        self.difficulty = difficulty
-        self.description = description
-        self.quest_data = default_data
+class Quest(Protocol):
+    name: ClassVar[str]
+    version: ClassVar[VersionInfo]
+    difficulty: ClassVar[Difficulty]
+    description: ClassVar[str]
+    default_data: ClassVar[Dict[str, Any]] = {}
+    quest_data: Dict[str, Any] = {}
 
-    def load(self, save_data: dict) -> None:
+    def new(self) -> None:
+        """ Create a new quest data """
+        self.quest_data = deepcopy(self.default_data)
+
+    def load(self, save_data: Dict[str, Any]) -> None:
         """ Load save data back into structure """
 
         # check save version is safe before upgrading
         save_semver = VersionInfo.parse(save_data[VERSION_KEY])
-        if not semver_safe(save_semver, self.semver):
+        if not semver_safe(save_semver, self.version):
             raise QuestLoadError(
-                f"Unsafe version mismatch! {save_semver} -> {self.semver}"
+                f"Unsafe version mismatch! {save_semver} -> {self.version}"
             )
 
+        self.new()
         self.quest_data.update(save_data)
 
-    def update_save_data(self) -> dict:
+    def get_save_data(self) -> Dict[str, Any]:
         """ Updates save data with new version and output """
 
-        self.quest_data[VERSION_KEY] = self.semver
+        self.quest_data[VERSION_KEY] = self.version
         return self.quest_data

@@ -2,14 +2,17 @@
 
 import os
 import structlog  # type: ignore
-from google.cloud.functions.context import Context
+from pydantic import ValidationError
+from google.cloud.functions.context import Context # type:  ignore
 
-import firebase_admin
-from firebase_admin import firestore
+import firebase_admin # type:  ignore
+from firebase_admin import firestore # type:  ignore
 
 from utils.models import NewGameData
+from quest_system import get_quest_by_name, QuestLoadError
+from quest_system.quests.intro import IntroQuest
 
-FIRST_QUEST = "level0:intro"
+FIRST_QUEST = IntroQuest.__name__
 
 app = firebase_admin.initialize_app()
 db = firestore.client()
@@ -23,10 +26,16 @@ def create_new_game(event: dict, context: Context):
     logger.info("Got create new game request", event=event)
 
     # decode event
-    new_game_data = NewGameData.parse_event(event)
+    try:
+        new_game_data = NewGameData.parse_event(event)
+    except ValidationError as err:
+        logger.error("Validation error", err=err)
+        raise err
+
     logger.info("Resolved data", new_game_data=new_game_data)
 
     # create game if doesn't exist
+    game_id = f"github:{new_game_data.userId}"
     game_ref = db.collection("game").document(game_id)
     game = game_ref.get()
     if game.exists:
@@ -47,17 +56,22 @@ def create_new_game(event: dict, context: Context):
         )
 
     # create starting quest if not exist
-    quest_id = f"{game_id}:{FIRST_QUEST}"
+    FirstQuest = get_quest_by_name(FIRST_QUEST)
+    quest_obj = FirstQuest()
+
+    quest_id = f"{game_id}:{FirstQuest.__name__}"
     quest_ref = db.collection("quest").document(quest_id)
 
     quest = quest_ref.get()
     if quest.exists:
-        logger.info("Quest already exists", quest_id=quest_id)
+        logger.info("Quest already exists, updating", quest_id=quest_id)
+
+        try:
+            quest_obj.load(quest.to_dict())
+        except QuestLoadError as err:
+            logger.error("Could not load", err=err)
+            raise err
     else:
-        logger.info("Creating new quest", quest_id=quest_id)
-        game_ref.set(
-            {
-                **new_game_data.dict(),
-                "joined": firestore.SERVER_TIMESTAMP,
-            }
-        )
+        quest_obj.new()
+
+    game_ref.set(quest_obj.get_save_data())

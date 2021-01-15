@@ -1,7 +1,7 @@
 """ Models for validation pubsub payloads """
 from typing import Optional
 import base64
-from pydantic import BaseModel, Field, Extra  # pylint: disable=no-name-in-module
+from pydantic import BaseModel, Field  # pylint: disable=no-name-in-module
 
 # pylint: disable=too-few-public-methods,missing-class-docstring
 class BaseModelWithPubSub(BaseModel):

@@ -2,13 +2,14 @@
 import pytest
 from semver import VersionInfo
 
-from app.quest_system import QuestLoadError, get_quest_by_name
+from app.quest_system import QuestError, QuestLoadError, get_quest_by_name
 from app.quest_system.quest_system import semver_safe, VERSION_KEY
+from app.quest_system.quests.debug import DebugQuest
 
 
 @pytest.fixture
-def quest():
-    return get_quest_by_name("debug")
+def DebugQuest():
+    return get_quest_by_name(DebugQuest.__name__)
 
 
 # pylint: disable=redefined-outer-name
@@ -49,18 +50,26 @@ def test_semver_unsafe(start, dest):
     assert semver_safe(start, dest) == False
 
 
-def test_quest_load_fail(quest):
+def test_quest_class_fail():
+    with pytest.raises(QuestError):
+        get_quest_by_name("_does not exist_")
+
+
+def test_quest_load_fail(DebugQuest):
     """ Tests a quest load fail due to semver mismatch """
+
+    quest = DebugQuest()
 
     bad_version_quest_data = {VERSION_KEY: "1.2.2", "a": 2}
     with pytest.raises(QuestLoadError):
         quest.load(bad_version_quest_data)
 
 
-def test_quest_load_save(quest):
+def test_quest_load_save(DebugQuest):
     """ Tests a quest load fail due to semver mismatch """
 
-    quest_data = {VERSION_KEY: "1.0.0", "a": 2}
+    quest = DebugQuest()
 
+    quest_data = {VERSION_KEY: "1.0.0", "a": 2}
     quest.load(quest_data)
-    assert quest.update_save_data()["a"] == quest_data["a"]
+    assert quest.get_save_data()["a"] == quest_data["a"]
