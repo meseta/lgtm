@@ -12,5 +12,5 @@ class DebugQuest(Quest):
     default_data = {"a": 1}
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     DebugQuest()

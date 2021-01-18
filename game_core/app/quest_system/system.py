@@ -32,7 +32,7 @@ class Quest(ABC):
     @property
     @abstractmethod
     def version(cls) -> VersionInfo:
-        ...
+        return NotImplemented
 
     @property
     @abstractmethod

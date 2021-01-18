@@ -2,3 +2,7 @@
 source = app,tests
 
 [report]
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    return NotImplemented

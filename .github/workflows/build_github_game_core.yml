@@ -1,22 +1,21 @@
-name: Build GitHub Auth Flow
+name: Build Game Core
 
 env:
-  workdir: ./github_auth_flow
+  workdir: ./game_core
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'github_auth_flow/**'
-      - '.github/workflows/build_github_auth_flow.yml'
+      - 'game_core/**'
+      - '.github/workflows/build_github_game_core.yml'
   pull_request:
     branches:
       - main
     paths:
-      - 'github_auth_flow/**'
-      - '.github/workflows/build_github_auth_flow.yml'
-
+      - 'game_core/**'
+      - '.github/workflows/build_github_game_core.yml'
 
 jobs:
   test:
@@ -41,9 +40,6 @@ jobs:
 
       - name: Install dependencies and run tests
         working-directory: ${{ env.workdir }}
-        env:
-          WEB_API_KEY: ${{ secrets.WEB_API_KEY }}
-          GH_TEST_TOKEN: ${{ secrets.GH_TEST_TOKEN }}
         run: |
           pip install pipenv
           pipenv install --deploy --dev
@@ -92,6 +88,8 @@ jobs:
           credentials: ${{ secrets.GCP_CREDENTIALS }}
           service_account_email: ${{ secrets.GCP_FUNCTIONS_SERVICE_ACCOUNT }}
           source_dir: '${{ env.workdir }}/app'
-          name: github_auth_flow
+          name: create_new_game
+          event_trigger_type: providers/cloud.pubsub/eventTypes/topic.publish
+          event_trigger_resource: projects/${{ secrets.GCP_PROJECT_ID }}/topics/create_new_game
           runtime: python39
-          env_vars: 'WEB_API_KEY=${{ secrets.WEB_API_KEY }},APP_VERSION=${{ steps.short_sha.outputs.sha7 }}'
+          env_vars: 'APP_VERSION=${{ steps.short_sha.outputs.sha7 }}'

@@ -3,16 +3,14 @@
 import os
 import structlog  # type: ignore
 from pydantic import ValidationError
-from google.cloud.functions.context import Context # type:  ignore
+from google.cloud.functions.context import Context  # type:  ignore
 
-import firebase_admin # type:  ignore
-from firebase_admin import firestore # type:  ignore
+import firebase_admin  # type:  ignore
+from firebase_admin import firestore  # type:  ignore
 
+from quest_system import get_quest_by_name, QuestLoadError, FIRST_QUEST_NAME
 from utils.models import NewGameData
-from quest_system import get_quest_by_name, QuestLoadError
-from quest_system.quests.intro import IntroQuest
-
-FIRST_QUEST = IntroQuest.__name__
+from utils.db_ids import create_game_id, create_quest_id
 
 app = firebase_admin.initialize_app()
 db = firestore.client()
@@ -23,11 +21,11 @@ logger.info("Started")
 
 def create_new_game(event: dict, context: Context):
     """ Create a new game """
-    logger.info("Got create new game request", event=event)
+    logger.info("Got create new game request", payload=event)
 
     # decode event
     try:
-        new_game_data = NewGameData.parse_event(event)
+        new_game_data = NewGameData.parse_obj(event)
     except ValidationError as err:
         logger.error("Validation error", err=err)
         raise err
@@ -35,7 +33,7 @@ def create_new_game(event: dict, context: Context):
     logger.info("Resolved data", new_game_data=new_game_data)
 
     # create game if doesn't exist
-    game_id = f"github:{new_game_data.userId}"
+    game_id = create_game_id(new_game_data.source, new_game_data.userId)
     game_ref = db.collection("game").document(game_id)
     game = game_ref.get()
     if game.exists:
@@ -56,10 +54,10 @@ def create_new_game(event: dict, context: Context):
         )
 
     # create starting quest if not exist
-    FirstQuest = get_quest_by_name(FIRST_QUEST)
+    FirstQuest = get_quest_by_name(FIRST_QUEST_NAME)
     quest_obj = FirstQuest()
 
-    quest_id = f"{game_id}:{FirstQuest.__name__}"
+    quest_id = create_quest_id(game_id, FIRST_QUEST_NAME)
     quest_ref = db.collection("quest").document(quest_id)
 
     quest = quest_ref.get()
@@ -71,7 +69,5 @@ def create_new_game(event: dict, context: Context):
         except QuestLoadError as err:
             logger.error("Could not load", err=err)
             raise err
-    else:
-        quest_obj.new()
 
-    game_ref.set(quest_obj.get_save_data())
+    quest_ref.set(quest_obj.get_save_data())
