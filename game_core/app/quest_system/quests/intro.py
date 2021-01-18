@@ -11,5 +11,5 @@ class IntroQuest(Quest):
     description = "The intro quest"
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     IntroQuest()

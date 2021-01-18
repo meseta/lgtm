@@ -9,6 +9,9 @@ import inspect
 
 from ..system import Quest
 from ..exceptions import QuestError
+from .intro import IntroQuest
+
+FIRST_QUEST_NAME = IntroQuest.__name__
 
 all_quests = {}
 for _importer, _name, _ in pkgutil.iter_modules(path=[os.path.dirname(__file__)]):
@@ -18,8 +21,11 @@ for _importer, _name, _ in pkgutil.iter_modules(path=[os.path.dirname(__file__)]
     for _parent, _class in _classes:
         if Quest in _class.__bases__:
             if _class.__name__ in all_quests:
-                raise ValueError(f"Duplicate quests found with name {_class.__name__}")
+                raise ValueError(
+                    f"Duplicate quests found with name {_class.__name__}"
+                )  # pragma: no cover
             all_quests[_class.__name__] = _class
+
 
 def get_quest_by_name(name: str) -> Type[Quest]:
     try:

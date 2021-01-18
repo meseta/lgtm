@@ -14,12 +14,12 @@ structlog = "*"
 google-cloud-functions = "*"
 semver = "*"
 firebase-admin = "*"
+functions-framework = "==2.1.0"
 
 [dev-packages]
 mypy = "*"
 pylint = "*"
 black = "==20.8b1"
-functions-framework = "==2.1.0"
 pytest = "*"
 pytest-cov = "*"
 
