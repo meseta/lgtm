@@ -1,6 +1,7 @@
 """ The intro quest """
 
-from semver import VersionInfo # type:  ignore
+from typing import TYPE_CHECKING
+from semver import VersionInfo  # type:  ignore
 from ..quest_system import Quest, Difficulty
 
 
@@ -9,3 +10,7 @@ class DebugQuest(Quest):
     difficulty = Difficulty.RESERVED
     description = "This is a quest to facilitate testing/debugging"
     default_data = {"a": 1}
+
+
+if TYPE_CHECKING:
+    DebugQuest()

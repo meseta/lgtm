@@ -2,15 +2,9 @@
 import pytest
 from semver import VersionInfo
 
-from app.quest_system import QuestError, QuestLoadError, get_quest_by_name
-from app.quest_system.quest_system import semver_safe, VERSION_KEY
+from app.quest_system import QuestError, get_quest_by_name, all_quests
+from app.quest_system.quest_system import semver_safe
 from app.quest_system.quests.debug import DebugQuest
-
-
-@pytest.fixture
-def DebugQuest():
-    return get_quest_by_name(DebugQuest.__name__)
-
 
 # pylint: disable=redefined-outer-name
 @pytest.mark.parametrize(
@@ -51,25 +45,18 @@ def test_semver_unsafe(start, dest):
 
 
 def test_quest_class_fail():
+    """ Try to load a non-existant class """
     with pytest.raises(QuestError):
         get_quest_by_name("_does not exist_")
 
 
-def test_quest_load_fail(DebugQuest):
-    """ Tests a quest load fail due to semver mismatch """
-
-    quest = DebugQuest()
-
-    bad_version_quest_data = {VERSION_KEY: "1.2.2", "a": 2}
-    with pytest.raises(QuestLoadError):
-        quest.load(bad_version_quest_data)
+def test_get_quest():
+    """ A successful class fetch """
+    assert get_quest_by_name(DebugQuest.__name__) == DebugQuest
 
 
-def test_quest_load_save(DebugQuest):
-    """ Tests a quest load fail due to semver mismatch """
+def test_all_quest_subclasses():
+    """ Instantiate all quests to check abstract base class implementation """
 
-    quest = DebugQuest()
-
-    quest_data = {VERSION_KEY: "1.0.0", "a": 2}
-    quest.load(quest_data)
-    assert quest.get_save_data()["a"] == quest_data["a"]
+    for quest_class in all_quests.values():
+        quest_class()  # should succeed if correctly implemented
