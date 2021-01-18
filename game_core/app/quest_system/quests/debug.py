@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 from semver import VersionInfo  # type:  ignore
-from ..quest_system import Quest, Difficulty
+from ..system import Quest, Difficulty
 
 
 class DebugQuest(Quest):

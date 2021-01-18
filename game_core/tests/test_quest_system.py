@@ -3,7 +3,7 @@ import pytest
 from semver import VersionInfo
 
 from app.quest_system import QuestError, get_quest_by_name, all_quests
-from app.quest_system.quest_system import semver_safe
+from app.quest_system.system import semver_safe
 from app.quest_system.quests.debug import DebugQuest
 
 # pylint: disable=redefined-outer-name
