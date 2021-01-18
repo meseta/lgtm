@@ -30,12 +30,14 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@master
         with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_CREDENTIALS }}
           export_default_credentials: true
 
       - name: Install dependencies and run tests
         working-directory: ./github_auth_flow
         run: |
+          gcloud info
           pip install pipenv
           pipenv install --deploy --dev
           pipenv run test
