@@ -19,11 +19,11 @@ from firebase_admin import firestore
 from utils.models import UserData
 
 CORS_HEADERS = {
-    'Access-Control-Allow-Origin': 'https://lgtm.meseta.dev',
-    'Access-Control-Allow-Methods': 'GET, POST',
-    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-    'Access-Control-Max-Age': '3600',
-    'Access-Control-Allow-Credentials': 'true'
+    "Access-Control-Allow-Origin": "https://lgtm.meseta.dev",
+    "Access-Control-Allow-Methods": "GET, POST",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Max-Age": "3600",
+    "Access-Control-Allow-Credentials": "true",
 }
 
 app = firebase_admin.initialize_app()
@@ -32,18 +32,24 @@ db = firestore.client()
 logger = structlog.get_logger().bind(version=os.environ.get("APP_VERSION", "test"))
 logger.info("Started")
 
+
 def github_auth_flow(request: Request):
     """ Validates a user from github and creates user """
 
     # CORS headers
-    if request.method == 'OPTIONS':
-        return ('', 204, CORS_HEADERS)
+    if request.method == "OPTIONS":
+        return ("", 204, CORS_HEADERS)
 
     # authenticate user
     token = request.headers.get("Authorization", "").removeprefix("Bearer ")
     try:
         decoded_token = verify_id_token(token)
-    except (ValueError, InvalidIdTokenError, ExpiredIdTokenError, RevokedIdTokenError) as err:
+    except (
+        ValueError,
+        InvalidIdTokenError,
+        ExpiredIdTokenError,
+        RevokedIdTokenError,
+    ) as err:
         logger.warn("Authentication error", err=err)
         return jsonify(error="Authentication error"), 403
     logger.info("Got authenticated user", decoded_token=decoded_token)
@@ -70,16 +76,15 @@ def github_auth_flow(request: Request):
     logger.info("Got github ID", gh_id=gh_id)
 
     # write user data
-    db.collection("users").document(decoded_token["uid"]).set({
-        **user_data.dict(),
-        "joined": firestore.SERVER_TIMESTAMP
-    })
+    db.collection("users").document(decoded_token["uid"]).set(
+        {**user_data.dict(), "joined": firestore.SERVER_TIMESTAMP}
+    )
 
     # stats
-    db.collection("system").document("stats").update({
-        "players": firestore.Increment(1)
-    })
+    db.collection("system").document("stats").update(
+        {"players": firestore.Increment(1)}
+    )
 
-    # TODO: find game to join
+    # TODO: find ongoing game to join
 
     return {"ok": True}, 200, CORS_HEADERS

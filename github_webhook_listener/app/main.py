@@ -13,6 +13,7 @@ OUR_REPO = "meseta/lgtm"
 logger = structlog.get_logger().bind(version=os.environ.get("APP_VERSION", "test"))
 logger.info("Started", our_repo=OUR_REPO)
 
+
 def github_webhook_listener(request: Request):
     """ A listener for github webhooks """
 
