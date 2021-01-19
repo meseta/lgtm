@@ -12,7 +12,8 @@ pipenv lock -r > app/requirements.txt
 gcloud functions deploy create_new_game \
     --entry-point create_new_game \
     --runtime python39 \
-    --trigger-topic "create_new_game" \
+    --trigger-event "providers/cloud.pubsub/eventTypes/topic.publish" \
+    --trigger-resource "create_new_game" \
     --memory=128MB \
     --source app \
     --service-account=$GCP_FUNCTIONS_SERVICE_ACCOUNT

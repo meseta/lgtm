@@ -18,13 +18,18 @@ FUNCTION_SOURCE = "app/main.py"
 @pytest.fixture(scope="package")
 def new_game_post():
     """ Test client for newgame"""
-    client = create_app("create_new_game", FUNCTION_SOURCE, "event").test_client()
+    client = create_app("create_new_game", FUNCTION_SOURCE, "event").test_client() 
 
     return lambda data: client.post(
         "/",
         json={
-            "@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
-            "data": b64encode(json.dumps(data).encode()).decode(),
+            "context": {
+                "eventId": "some-eventId",
+                "timestamp": "some-timestamp",
+                "eventType": "some-eventType",
+                "resource": "some-resource",
+            },
+            "data": {"data": b64encode(json.dumps(data).encode()).decode()},
         },
     )
 

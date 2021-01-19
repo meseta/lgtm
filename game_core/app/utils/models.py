@@ -11,6 +11,10 @@ class BaseModelWithPubSub(BaseModel):
     def from_base64(cls, data: bytes):
         return cls.parse_raw(b64decode(data).decode("utf-8"))
 
+    @classmethod
+    def from_event(cls, event: dict):
+        return cls.from_base64(event["data"])
+
 
 class NewGameData(BaseModelWithPubSub):
     """ Create a new game """

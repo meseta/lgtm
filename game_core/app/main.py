@@ -19,13 +19,13 @@ logger = structlog.get_logger().bind(version=os.environ.get("APP_VERSION", "test
 logger.info("Started")
 
 
-def create_new_game(event: bytes, context: Context):
+def create_new_game(event: dict, context: Context):
     """ Create a new game """
     logger.info("Got create new game request", payload=event)
 
     # decode event
     try:
-        new_game_data = NewGameData.from_base64(event)
+        new_game_data = NewGameData.from_event(event)
     except ValidationError as err:
         logger.error("Validation error", err=err)
         raise err
