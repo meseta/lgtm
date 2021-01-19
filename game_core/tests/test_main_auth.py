@@ -1,6 +1,7 @@
-""" Setup for tests """
+""" Tests for main.py """
 
 import os
+import copy
 import string
 import random
 import pytest
@@ -18,25 +19,13 @@ WEB_API_KEY = os.environ.get("WEB_API_KEY")
 GH_TEST_TOKEN = os.environ.get("GH_TEST_TOKEN")
 
 
-@pytest.fixture(scope="package")
-def client():
+@pytest.fixture(scope="module")
+def auth_flow_client():
     """ Test client """
-    return create_app("github_auth_flow", FUNCTION_SOURCE).test_client()
+    return create_app("github_auth_flow", FUNCTION_SOURCE, "http").test_client()
 
 
-@pytest.fixture(scope="package")
-def firebase_app():
-    """ The firebase app, used for tests and stuff """
-    return firebase_admin.initialize_app(name="test")
-
-
-@pytest.fixture(scope="package")
-def firestore_client(firebase_app):
-    """ The firebase app, used for tests and stuff """
-    return firestore.client(app=firebase_app)
-
-
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def test_user(firebase_app, firestore_client):
     uid = "test_user_" + "".join(
         [random.choice(string.ascii_letters) for _ in range(10)]
@@ -58,7 +47,7 @@ def test_user(firebase_app, firestore_client):
     )
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def test_user_token(firebase_app, firestore_client, test_user):
     """ Create a new test user and get a login key """
 
@@ -83,3 +72,49 @@ def test_user_data():
         id="930832",
         accessToken=GH_TEST_TOKEN,
     ).dict()
+
+
+# pylint: disable=redefined-outer-name
+def test_unauthenticated(auth_flow_client):
+    """ Test unauthenticated """
+    res = auth_flow_client.post("/")
+    assert res.status_code == 403
+
+
+def test_user_invalid(auth_flow_client, test_user_token):
+    """ Test when user is invalid """
+
+    bad_data = {
+        "foo": "bar",
+        "moo": "cow",
+    }
+    res = auth_flow_client.post(
+        "/", headers={"Authorization": "Bearer " + test_user_token}, json=bad_data
+    )
+    assert res.status_code == 400
+
+
+def test_github_invalid(auth_flow_client, test_user_token, test_user_data):
+    """ Test when github token is invalid """
+
+    test_user_data["accessToken"] = "foobar"  # make access token bad
+    res = auth_flow_client.post(
+        "/", headers={"Authorization": "Bearer " + test_user_token}, json=test_user_data
+    )
+    assert res.status_code == 400
+
+
+def test_good_flow(
+    auth_flow_client, test_user_token, test_user_data, test_user, firestore_client
+):
+    """ Test a successful flow """
+
+    res = auth_flow_client.post(
+        "/", headers={"Authorization": "Bearer " + test_user_token}, json=test_user_data
+    )
+    assert res.status_code == 200
+
+    # check firestore
+    doc = firestore_client.collection("users").document(test_user.uid).get()
+    assert doc.exists
+    assert doc.get("id") == test_user_data["id"]
