@@ -52,7 +52,8 @@ def github_auth_flow(request: Request):
     ) as err:
         logger.warn("Authentication error", err=err)
         return jsonify(error="Authentication error"), 403
-    logger.info("Got authenticated user", decoded_token=decoded_token)
+    uid = decoded_token["uid"]
+    logger.info("Got authenticated user", decoded_token=decoded_token, uid=uid)
 
     # decode
     try:
@@ -76,8 +77,8 @@ def github_auth_flow(request: Request):
     logger.info("Got github ID", gh_id=gh_id)
 
     # write user data
-    db.collection("users").document(decoded_token["uid"]).set(
-        {**user_data.dict(), "joined": firestore.SERVER_TIMESTAMP}
+    db.collection("users").document(uid).set(
+        {**user_data.dict(), "joined": firestore.SERVER_TIMESTAMP, "source": "github"}
     )
 
     # stats
@@ -85,6 +86,15 @@ def github_auth_flow(request: Request):
         {"players": firestore.Increment(1)}
     )
 
-    # TODO: find ongoing game to join
+    # find ongoing game to join
+    docs = (
+        db.collection("games")
+        .where("userId", "==", gh_id)
+        .where("source", "==", "github")
+        .stream()
+    )
+    for doc in docs:
+        logger.info("Found matching game, adding user", game_id=doc.id)
+        doc.reference.set({"userUid": uid}, merge=True)
 
     return {"ok": True}, 200, CORS_HEADERS

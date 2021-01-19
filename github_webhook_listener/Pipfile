@@ -11,6 +11,8 @@ deploy = "./deploy.sh"
 [packages]
 pydantic = "*"
 structlog = "*"
+google-cloud-pubsub = "*"
+firebase-admin = "*"
 
 [dev-packages]
 mypy = "*"

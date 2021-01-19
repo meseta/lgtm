@@ -25,7 +25,7 @@ def create_new_game(event: dict, context: Context):
 
     # decode event
     try:
-        new_game_data = NewGameData.parse_obj(event)
+        new_game_data = NewGameData.from_event(event)
     except ValidationError as err:
         logger.error("Validation error", err=err)
         raise err
