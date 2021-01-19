@@ -16,6 +16,7 @@ firebase-admin = "*"
 functions-framework = "==2.1.0"
 google-cloud-pubsub = "*"
 pygithub = "*"
+environs = "*"
 
 [dev-packages]
 mypy = "*"
