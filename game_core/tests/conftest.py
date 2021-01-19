@@ -3,6 +3,7 @@
 import os
 import string
 import random
+from base64 import b64encode
 import json
 import pytest
 
@@ -15,9 +16,17 @@ FUNCTION_SOURCE = "app/main.py"
 
 
 @pytest.fixture(scope="package")
-def new_game_client():
+def new_game_post():
     """ Test client for newgame"""
-    return create_app("create_new_game", FUNCTION_SOURCE, "event").test_client()
+    client = create_app("create_new_game", FUNCTION_SOURCE, "event").test_client()
+
+    return lambda data: client.post(
+        "/",
+        json={
+            "@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
+            "data": b64encode(json.dumps(data).encode()).decode(),
+        },
+    )
 
 
 @pytest.fixture(scope="package")

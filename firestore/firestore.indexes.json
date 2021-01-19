@@ -1,17 +1,4 @@
 {
-	"indexes": [
-        {
-			"collectionGroup": "tweets",
-			"queryScope": "COLLECTION",
-			"fields": [{
-					"fieldPath": "queued",
-					"order": "ASCENDING"
-				}, {
-					"fieldPath": "added",
-					"order": "ASCENDING"
-				}
-			]
-		}
-	],
+	"indexes": [],
 	"fieldOverrides": []
 }
