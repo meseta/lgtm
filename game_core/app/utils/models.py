@@ -1,7 +1,7 @@
 """ Models for validation pubsub payloads """
 from typing import Optional
 from base64 import b64decode
-from pydantic import BaseModel, Field  # pylint: disable=no-name-in-module
+from pydantic import BaseModel, Field, Extra  # pylint: disable=no-name-in-module
 
 # pylint: disable=too-few-public-methods,missing-class-docstring
 class BaseModelWithPubSub(BaseModel):
@@ -17,9 +17,50 @@ class BaseModelWithPubSub(BaseModel):
 
 
 class NewGameData(BaseModelWithPubSub):
-    """ Create a new game """
+    """ Payload between endpoints for creating a new game """
 
     source: str = Field(..., title="User source, e.g. 'github'")
     userId: str = Field(..., title="User ID")
-    userUid: Optional[str] = Field(None, title="Auth UID if known")
     forkUrl: str = Field(..., title="URL of the LGTM fork")
+
+
+class UserData(BaseModel):
+    """ Incoming auth data from /web/src/store/auth/types.ts """
+
+    profileImage: str = Field(..., title="Profile pic URL")
+    name: str = Field(..., title="Real name")
+    handle: str = Field(..., title="Username")
+    id: str = Field(..., title="User's GitHub ID")
+    accessToken: str = Field(..., title="GitHub access token")
+
+
+class GitHubUser(BaseModel):
+    """ User entity for GitHub hooks """
+
+    login: str = Field(..., title="User's user login name")
+    id: int = Field(..., title="User's ID")
+
+    class Config:
+        extra = Extra.ignore
+
+
+class GitHubRepository(BaseModel):
+    """ Repository entity for GitHub hooks """
+
+    id: int = Field(..., title="Repo's ID")
+    full_name: str = Field(..., title="Repo's full name (including owner)")
+    owner: GitHubUser = Field(..., title="Owner of repo")
+    url: str = Field(..., title="API RUL of the repo")
+
+    class Config:
+        extra = Extra.ignore
+
+
+class GitHubHookFork(BaseModel):
+    """ Webhook payload for GitHub fork hooks """
+
+    forkee: GitHubRepository = Field(..., title="The fork created")
+    repository: GitHubRepository = Field(..., title="The repository being forked")
+
+    class Config:
+        extra = Extra.ignore

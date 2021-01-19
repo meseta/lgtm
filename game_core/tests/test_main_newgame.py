@@ -3,12 +3,38 @@
 import string
 import random
 import pytest
+import os
+from base64 import b64encode
+import json
 
 from app.quest_system import FIRST_QUEST_NAME
 from app.utils.models import NewGameData
 from app.utils.db_ids import create_game_id, create_quest_id
+from functions_framework import create_app  # type: ignore
 
 SOURCE = "test"
+
+FUNCTION_SOURCE = "app/main.py"
+
+
+@pytest.fixture(scope="module")
+def new_game_post():
+    """ Test client for newgame"""
+    client = create_app("create_new_game", FUNCTION_SOURCE, "event").test_client()
+
+    return lambda data: client.post(
+        "/",
+        json={
+            "context": {
+                "eventId": "some-eventId",
+                "timestamp": "some-timestamp",
+                "eventType": "some-eventType",
+                "resource": "some-resource",
+            },
+            "data": {"data": b64encode(json.dumps(data).encode()).decode()},
+        },
+    )
+
 
 # pylint: disable=redefined-outer-name
 @pytest.mark.parametrize(
@@ -49,7 +75,6 @@ def new_game_data(firestore_client):
     yield NewGameData(
         source=SOURCE,
         userId=uid,
-        userUid=uid,
         forkUrl="test_url",
     ).dict()
 

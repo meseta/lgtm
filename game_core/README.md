@@ -1,6 +1,8 @@
-# Game Core
+# Game Core Functions
 
-Core of the game
+* create_new_game: starts a new game and initial quest
+* github_auth_flow: Completes auth from frontend for GitHub Oauth
+* github_webhook_listener: Listens to forks from github
 
 ## Local Development
 
