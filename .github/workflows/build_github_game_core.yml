@@ -48,7 +48,7 @@ jobs:
         working-directory: ${{ env.workdir }}
         env:
           WEB_API_KEY: ${{ secrets.WEB_API_KEY }}
-          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          WEBHOOK_SECRET: this_is_a_secret
           GH_TEST_TOKEN: ${{ secrets.GH_TEST_TOKEN }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: pipenv run test
