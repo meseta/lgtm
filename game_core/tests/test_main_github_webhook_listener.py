@@ -20,7 +20,6 @@ TEST_FILES = os.path.join(
     "test_files",
 )
 
-
 class Payload:  # pylint: disable=too-few-public-methods
     """ Container for holding header/payload pairs during testing"""
 
@@ -29,12 +28,6 @@ class Payload:  # pylint: disable=too-few-public-methods
             self.headers = json.load(fp)
         with open(os.path.join(TEST_FILES, payload_path), "rb") as fp:
             self.payload = fp.read()
-
-
-@pytest.fixture(scope="module", autouse=True)
-def override_webhook_secret():
-    # set the environment to the right secret. This is what the test cases were recorded with
-    os.environ["WEBHOOK_SECRET"] = "this_is_a_secret"
 
 
 @pytest.fixture()
