@@ -4,7 +4,7 @@ import pytest
 import string
 import random
 
-from app.firebase_utils import db
+from app.firebase_utils import db, firestore
 from app.user import User, Source
 from app.game import Game
 from app.quest import Quest
@@ -31,6 +31,9 @@ def random_user():
 
     # cleanup
     db.collection("users").document(uid).delete()
+    db.collection("system").document("stats").update(
+        {"players": firestore.Increment(-1)}
+    )
 
 
 @pytest.fixture(scope="package")
@@ -47,6 +50,9 @@ def testing_user():
 
     # cleanup
     db.collection("users").document(uid).delete()
+    db.collection("system").document("stats").update(
+        {"players": firestore.Increment(-1)}
+    )
 
 
 @pytest.fixture(scope="package")
@@ -61,6 +67,7 @@ def testing_game(testing_user):
 
     # cleanup
     db.collection("game").document(game.key).delete()
+    db.collection("system").document("stats").update({"games": firestore.Increment(-1)})
 
     # cleanup auto-created quest too
     QuestClass = Quest.get_first()

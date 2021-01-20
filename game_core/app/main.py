@@ -1,15 +1,12 @@
 """ Game core """
 
-import os
-import json
 import structlog  # type: ignore
+
+from environs import Env
 from flask import Request, abort, jsonify
 from pydantic import ValidationError
 from google.cloud.functions.context import Context  # type:  ignore
-from google.cloud import pubsub_v1  # type:  ignore
 
-import firebase_admin  # type:  ignore
-from firebase_admin import firestore  # type:  ignore
 from firebase_admin.auth import (  # type:  ignore
     verify_id_token,
     InvalidIdTokenError,
@@ -19,13 +16,16 @@ from firebase_admin.auth import (  # type:  ignore
 
 from github import Github, BadCredentialsException
 
-from quest_system import get_quest_by_name, QuestLoadError, FIRST_QUEST_NAME
-from utils.models import NewGameData, GitHubHookFork, UserData
-from utils.db_ids import create_game_id, create_quest_id
-from utils.verify import verify_signature
+from quest import Quest, QuestLoadError
+from user import User, Source
+from game import Game
+from models import UserData
+from github_utils import verify_signature, GitHubHookFork
+
+env = Env()
 
 OUR_REPO = "meseta/lgtm"
-GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID")
+GCP_PROJECT_ID = env("GCP_PROJECT_ID")
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "https://lgtm.meseta.dev",
@@ -37,9 +37,8 @@ CORS_HEADERS = {
 
 # firebase client
 
-logger = structlog.get_logger().bind(version=os.environ.get("APP_VERSION", "test"))
+logger = structlog.get_logger().bind(version=env("APP_VERSION", "test"))
 logger.info("Started", our_repo=OUR_REPO)
-
 
 
 def github_webhook_listener(request: Request):
@@ -68,12 +67,12 @@ def github_webhook_listener(request: Request):
     # create a user reference, and then create new game
     user = User.find_by_source_id(Source.GITHUB, user_id)
     if not user:
-        user = User.reference(source.GITHUB, user_id)
+        user = User.reference(Source.GITHUB, user_id)
 
-    game = Game.new(user, fork_url)
+    game = Game.new(user, hook_fork.forkee.url)
     logger.info("Created new game for user", game=game, user=user)
 
-    return jsonify(status="ok")
+    return jsonify(status="ok", user_id=user_id)
 
 
 def github_auth_flow(request: Request):
@@ -123,8 +122,7 @@ def github_auth_flow(request: Request):
     user = User.new(uid=uid, source=Source.GITHUB, user_data=user_data)
     game = Game.find_by_user(user)
     if game:
-        logger.info("Found matching game, adding user", game=game)
         game.assign_to_uid(uid)
+    logger.info("Results creating new user and finding game", game=game, user=user)
 
     return {"ok": True}, 200, CORS_HEADERS
-

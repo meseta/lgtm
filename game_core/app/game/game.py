@@ -5,11 +5,12 @@ from typing import Optional
 from app.firebase_utils import db, firestore
 from app.user import User
 
+
 class Game:
     @classmethod
     def new(cls, user: User, fork_url: str) -> Game:
         """ Create a new game if doesn't exist, return reference to it """
-        from app.quest import Quest # avoid circular import
+        from app.quest import Quest  # avoid circular import
 
         if not user or not fork_url:
             raise ValueError("User or fork can't be blank")
@@ -37,6 +38,9 @@ class Game:
                     "joined": firestore.SERVER_TIMESTAMP,
                 }
             )
+            db.collection("system").document("stats").update(
+                {"games": firestore.Increment(1)}
+            )
 
         # create starting quest if not exist
         QuestClass = Quest.get_first()
@@ -47,11 +51,7 @@ class Game:
     @classmethod
     def find_by_user(cls, user: User) -> Optional[Game]:
         """ Find a game by user_key and return ref object for it, or None """
-        docs = (
-            db.collection("game")
-            .where("user_key", "==", user.key)
-            .stream()
-        )
+        docs = db.collection("game").where("user_key", "==", user.key).stream()
         for doc in docs:
             game = cls()
             game.user = user

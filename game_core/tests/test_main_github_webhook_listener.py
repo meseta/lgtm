@@ -3,20 +3,22 @@
 import os
 import json
 import pytest
+
 from pydantic import ValidationError
-from app.utils.models import GitHubHookFork
 from functions_framework import create_app  # type: ignore
 
+from app.firebase_utils import db, firestore
+from app.github_utils import GitHubHookFork
 
+from app.user import User, Source
+from app.game import Game
+from app.quest import Quest
+
+FUNCTION_SOURCE = "app/main.py"
 TEST_FILES = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
     "test_files",
 )
-
-FUNCTION_SOURCE = "app/main.py"
-
-# set the environment to the right secret. This is what the test cases were recorded with
-os.environ["WEBHOOK_SECRET"] = "this_is_a_secret"
 
 
 class Payload:  # pylint: disable=too-few-public-methods
@@ -27,6 +29,12 @@ class Payload:  # pylint: disable=too-few-public-methods
             self.headers = json.load(fp)
         with open(os.path.join(TEST_FILES, payload_path), "rb") as fp:
             self.payload = fp.read()
+
+
+@pytest.fixture(scope="module", autouse=True)
+def override_webhook_secret():
+    # set the environment to the right secret. This is what the test cases were recorded with
+    os.environ["WEBHOOK_SECRET"] = "this_is_a_secret"
 
 
 @pytest.fixture()
@@ -63,15 +71,6 @@ def test_model_invalid(bad_fork):
         GitHubHookFork.parse_raw(bad_fork.payload)
 
 
-def test_good_fork(webhook_listener_client, good_fork):
-    """ For a good fork that's working fine """
-
-    res = webhook_listener_client.post(
-        "/", headers=good_fork.headers, data=good_fork.payload
-    )
-    assert res.status_code == 200
-
-
 def test_model_validation_fail(webhook_listener_client, bad_fork):
     """ Test model validation failure with bad payload but correct signature for it"""
 
@@ -97,3 +96,28 @@ def test_no_signature(webhook_listener_client, good_fork):
         "/", headers={"Content-Type": "application/json"}, data=good_fork.payload
     )
     assert res.status_code == 403
+
+
+def test_good_fork(webhook_listener_client, good_fork):
+    """ For a good fork that's working fine """
+
+    res = webhook_listener_client.post(
+        "/", headers=good_fork.headers, data=good_fork.payload
+    )
+    assert res.status_code == 200
+
+    # check game got created
+    user_id = res.json["user_id"]
+    user = User.reference(Source.GITHUB, user_id)
+    game = Game.find_by_user(user)
+    assert game is not None
+
+    # cleanup
+    db.collection("game").document(game.key).delete()
+    db.collection("system").document("stats").update({"games": firestore.Increment(-1)})
+
+    # cleanup auto-created quest too
+    QuestClass = Quest.get_first()
+    quest = QuestClass()
+    quest.game = game
+    db.collection("quest").document(quest.key).delete()

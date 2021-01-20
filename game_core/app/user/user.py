@@ -10,6 +10,7 @@ from app.firebase_utils import db, firestore
 
 class Source(Enum):
     """ Source and user_id form a tuple to identify users """
+
     TEST = "test"
     GITHUB = "github"
 
