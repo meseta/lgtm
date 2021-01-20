@@ -1,13 +1,16 @@
 """ Game entity management """
 
 from __future__ import annotations
-from app.firebase_utils import db
+from typing import Optional
+from app.firebase_utils import db, firestore
 from app.user import User
 
 class Game:
     @classmethod
     def new(cls, user: User, fork_url: str) -> Game:
         """ Create a new game if doesn't exist, return reference to it """
+        from app.quest import Quest # avoid circular import
+
         if not user or not fork_url:
             raise ValueError("User or fork can't be blank")
 
@@ -21,6 +24,7 @@ class Game:
                 {
                     "fork_url": fork_url,
                     "user_uid": user.uid,
+                    "user_key": user.key,
                 },
                 merge=True,
             )
@@ -29,6 +33,7 @@ class Game:
                 {
                     "fork_url": fork_url,
                     "user_uid": user.uid,
+                    "user_key": user.key,
                     "joined": firestore.SERVER_TIMESTAMP,
                 }
             )
@@ -43,12 +48,14 @@ class Game:
     def find_by_user(cls, user: User) -> Optional[Game]:
         """ Find a game by user_key and return ref object for it, or None """
         docs = (
-            db.collection("games")
-            .where("user_key", "==", user.user_key)
+            db.collection("game")
+            .where("user_key", "==", user.key)
             .stream()
         )
         for doc in docs:
-            return cls(doc.id)
+            game = cls()
+            game.user = user
+            return game
         return None
 
     user: Optional[User] = None
@@ -60,7 +67,7 @@ class Game:
         return f"{self.user.key}"
 
     def assign_to_uid(self, uid: str) -> None:
-        db.collection("games").document(self.game_id).set({"uid": uid}, merge=True)
+        db.collection("game").document(self.key).set({"user_uid": uid}, merge=True)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(user={repr(self.user)}, fork_url={self.fork_url})"
+        return f"{self.__class__.__name__}(user={repr(self.user)})"

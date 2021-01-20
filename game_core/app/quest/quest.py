@@ -1,7 +1,7 @@
 """ Base Classes for quest objects """
 from __future__ import annotations
 
-from typing import Any, Dict, ClassVar, Type
+from typing import Any, Dict, ClassVar, Type, Optional
 from enum import Enum
 from abc import ABC, abstractmethod
 from copy import deepcopy
@@ -9,6 +9,7 @@ from copy import deepcopy
 from semver import VersionInfo  # type:  ignore
 
 from app.game import Game
+from app.firebase_utils import db
 from .exceptions import QuestError, QuestLoadError
 
 
@@ -64,7 +65,7 @@ class Quest(ABC):
             quest.load(quest_doc.to_dict())
 
         # save data, this will upgrade version if it exists
-        # TODO: handle game in progress
+        # TODO: avoid overwriting a game in progress
         quest_doc.reference.set(quest.get_save_data())
 
         return quest

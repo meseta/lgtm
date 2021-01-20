@@ -26,32 +26,9 @@ def test_reference():
     assert repr(user)
 
 
-def test_new(random_id):
-    """ Test the creation of a new user """
-    uid = "test_" + random_id
-
-    # check doesn't exist before
-    doc = db.collection("users").document(uid).get()
-    assert not doc.exists
-
-    # create user
-    user_data = UserData(
-        profileImage="", name="Test User", handle="test_user", id=uid, accessToken=""
-    )
-    user = User.new(uid, Source.TEST, user_data)
-    assert user.uid == uid
-
-    # check now exists
-    doc = db.collection("users").document(uid).get()
-    assert doc.exists
-
-    # cleanup
-    doc.reference.delete()
-
-
-def test_second_creation(random_user):
+def test_second_creation(testing_user):
     """ Test second creation doesn't error """
-    uid = random_user.uid
+    uid = testing_user.uid
     user_data = UserData(
         profileImage="", name="Test User", handle="test_user", id="0", accessToken=""
     )
@@ -59,13 +36,13 @@ def test_second_creation(random_user):
     assert user.uid == uid
 
 
-def test_not_found_by_source_id(random_user):
+def test_fail_find_by_source_id():
     """ Test failing to find a user by source ID """
     user = User.find_by_source_id(Source.TEST, "_user_does_not_exist_")
     assert user is None
 
 
-def test_find_by_source_id(random_user):
+def test_find_by_source_id(testing_user):
     """ Test finding the user by source ID """
-    user = User.find_by_source_id(random_user.source, random_user.user_id)
-    assert user.uid == random_user.uid
+    user = User.find_by_source_id(testing_user.source, testing_user.user_id)
+    assert user.uid == testing_user.uid

@@ -1,6 +1,7 @@
 """ Test quest data """
 
 import pytest
+from app.firebase_utils import db
 from app.quest import Quest, QuestError, DEBUG_QUEST_KEY
 from app.quest.quests import all_quests
 from app.quest.quests.debug import DebugQuest
@@ -40,7 +41,7 @@ def test_new_quest_fail():
         DebugQuest.new("")
 
 
-def test_invalid_game():
+def test_invalid_init():
     """ Test instantiation with invalid game """
     quest = DebugQuest()
 
@@ -48,14 +49,31 @@ def test_invalid_game():
         quest.key
 
 
-# def test_quest():
-#     """ Test creating a valid quest """
+def test_quest(testing_game):
+    """ Test creating a valid quest """
 
-#     game = ...
-#     QuestClass = Quest.get_first()
-#     quest = QuestClass(game)
+    QuestClass = Quest.get_by_name(DEBUG_QUEST_KEY)
 
-#     assert quest.key
+    # check the quest doesn't exist before
+    quest = QuestClass()
+    quest.game = testing_game
+    testing_key = quest.key
 
-#     # create again, this should still work, and avoid loading data
-#     quest = QuestClass(game)
+    doc = db.collection("quest").document(testing_key).get()
+    assert not doc.exists
+
+    # create new game
+    quest = QuestClass.new(testing_game)
+    assert quest.key == testing_key
+
+    # check it
+    doc = db.collection("quest").document(testing_key).get()
+    assert doc.exists
+
+    # create again, this should still work, and avoid loading data
+    # TODO: check for lost progress data
+    quest = QuestClass.new(testing_game)
+    assert quest.key == testing_key
+
+    # cleanup
+    doc.reference.delete()

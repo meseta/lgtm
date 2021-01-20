@@ -27,7 +27,7 @@ for _, module_name, _ in pkgutil.iter_modules(path=[os.path.dirname(__file__)]):
         if Quest in QuestClass.__bases__:
             if QuestClass.__name__ in all_quests:
                 raise ValueError(
-                    f"Duplicate quests found with name {quest.__name__}"
+                    f"Duplicate quests found with name {QuestClass.__name__}"
                 )  # pragma: no cover
             all_quests[QuestClass.__name__] = QuestClass
 
