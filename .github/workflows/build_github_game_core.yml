@@ -6,13 +6,13 @@ env:
 on:
   push:
     branches:
-      - main
+      - refactor
     paths:
       - 'game_core/**'
       - '.github/workflows/build_github_game_core.yml'
   pull_request:
     branches:
-      - main
+      - refactor
     paths:
       - 'game_core/**'
       - '.github/workflows/build_github_game_core.yml'
