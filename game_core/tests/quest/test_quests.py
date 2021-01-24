@@ -3,7 +3,7 @@
 import pytest
 from app.firebase_utils import db
 from app.quest import Quest, QuestError, DEBUG_QUEST_KEY
-from app.quest.quests import all_quests
+from app.quest.loader import all_quests
 from app.quest.quests.debug import DebugQuest
 
 # pylint: disable=redefined-outer-name

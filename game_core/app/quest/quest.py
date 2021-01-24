@@ -37,7 +37,7 @@ class Difficulty(Enum):
 class Quest(ABC):
     @classmethod
     def get_by_name(cls, name: str) -> Type[Quest]:
-        from .quests import all_quests  # avoid circular import
+        from .loader import all_quests  # avoid circular import
 
         try:
             return all_quests[name]
@@ -46,7 +46,7 @@ class Quest(ABC):
 
     @classmethod
     def get_first(cls) -> Type[Quest]:
-        from .quests import FIRST_QUEST_KEY  # avoid circular import
+        from .loader import FIRST_QUEST_KEY  # avoid circular import
 
         return cls.get_by_name(FIRST_QUEST_KEY)
 
