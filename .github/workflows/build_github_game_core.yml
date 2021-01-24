@@ -38,16 +38,21 @@ jobs:
           service_account_key: ${{ secrets.GCP_CREDENTIALS }}
           export_default_credentials: true
 
-      - name: Install dependencies and run tests
+      - name: Install dependencies
         working-directory: ${{ env.workdir }}
-        env:
-          WEB_API_KEY: ${{ secrets.WEB_API_KEY }}
-          GH_TEST_TOKEN: ${{ secrets.GH_TEST_TOKEN }}
-          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           pip install pipenv
           pipenv install --deploy --dev
-          pipenv run test
+          
+      - name: Running tests
+        working-directory: ${{ env.workdir }}
+        env:
+          WEB_API_KEY: ${{ secrets.WEB_API_KEY }}
+          WEBHOOK_SECRET: this_is_a_secret
+          GH_TEST_TOKEN: ${{ secrets.GH_TEST_TOKEN }}
+          GH_TEST_ID: ${{ secrets.GH_TEST_ID }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: pipenv run test
           
       - name: Send test report
         uses: 5monkeys/cobertura-action@master

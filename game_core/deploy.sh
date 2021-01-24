@@ -12,17 +12,12 @@ if [[ -z "$WEBHOOK_SECRET" ]]; then
     exit 1
 fi
 
-pipenv lock -r > app/requirements.txt
+if [[ -z "$WEB_API_KEY" ]]; then
+    echo "WEB_API_KEY not set, run inside pipenv" 1>&2
+    exit 1
+fi
 
-# Deploy create new game
-gcloud functions deploy create_new_game \
-    --entry-point create_new_game \
-    --runtime python39 \
-    --trigger-event "providers/cloud.pubsub/eventTypes/topic.publish" \
-    --trigger-resource "create_new_game" \
-    --memory=128MB \
-    --source app \
-    --service-account=$GCP_FUNCTIONS_SERVICE_ACCOUNT
+pipenv lock -r > app/requirements.txt
 
 # Deploy github webhook listener
 gcloud functions deploy github_webhook_listener \

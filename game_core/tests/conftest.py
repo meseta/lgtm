@@ -1,18 +1,76 @@
 """ Setup for tests """
 
 import pytest
+import string
+import random
 
-import firebase_admin
-from firebase_admin import firestore
+from app.firebase_utils import db, firestore
+from app.user import User, Source
+from app.game import Game
+from app.quest import Quest
+from app.models import UserData
+
+
+@pytest.fixture
+def random_id():
+    """ A random alphanumeric ID for various uses in tests """
+    return "".join([random.choice(string.ascii_letters) for _ in range(10)])
+
+
+@pytest.fixture
+def random_user():
+    """ A random user for testing, cleans up afterwards """
+    uid = "test_" + "".join([random.choice(string.ascii_letters) for _ in range(10)])
+
+    user_data = UserData(
+        profileImage="", name="Test User", handle="test_user", id=uid, accessToken=""
+    )
+
+    user = User.new(uid, Source.TEST, user_data)
+    yield user
+
+    # cleanup
+    db.collection("users").document(uid).delete()
+    db.collection("system").document("stats").update(
+        {"players": firestore.Increment(-1)}
+    )
 
 
 @pytest.fixture(scope="package")
-def firebase_app():
-    """ The firebase app, used for tests and stuff """
-    return firebase_admin.initialize_app(name="test")
+def testing_user():
+    """ A user for testing, that can have games assigned, cleans up afterwards """
+    uid = "test_" + "".join([random.choice(string.ascii_letters) for _ in range(10)])
+
+    user_data = UserData(
+        profileImage="", name="Test User", handle="test_user", id=uid, accessToken=""
+    )
+
+    user = User.new(uid, Source.TEST, user_data)
+    yield user
+
+    # cleanup
+    db.collection("users").document(uid).delete()
+    db.collection("system").document("stats").update(
+        {"players": firestore.Increment(-1)}
+    )
 
 
 @pytest.fixture(scope="package")
-def firestore_client(firebase_app):
-    """ The firebase app, used for tests and stuff """
-    return firestore.client(app=firebase_app)
+def testing_game(testing_user):
+    """ A random game for testing, cleans up afterwards """
+    fork_url = "url_" + "".join(
+        [random.choice(string.ascii_letters) for _ in range(10)]
+    )
+
+    game = Game.new(testing_user, fork_url)
+    yield game
+
+    # cleanup
+    db.collection("game").document(game.key).delete()
+    db.collection("system").document("stats").update({"games": firestore.Increment(-1)})
+
+    # cleanup auto-created quest too
+    QuestClass = Quest.get_first()
+    quest = QuestClass()
+    quest.game = game
+    db.collection("quest").document(quest.key).delete()
