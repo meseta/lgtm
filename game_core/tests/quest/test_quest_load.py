@@ -1,10 +1,11 @@
 """ Test for quest load/save handling system """
 
-import pytest
+import json
 from copy import deepcopy
+import pytest
 from semver import VersionInfo
 
-from app.quest import Quest, QuestError, QuestLoadError
+from app.quest import Quest, QuestError, QuestLoadError, QuestSaveError
 from app.quest.quest import semver_safe
 from app.quest.quests.debug import DebugQuest
 
@@ -43,27 +44,40 @@ def test_semver_unsafe(start, dest):
     assert semver_safe(start, dest) == False
 
 
-def test_quest_load_fail():
+def test_quest_load_version_fail():
     """ Tests a quest load fail due to semver mismatch """
 
     # generate a bad save data version
-    save_data = deepcopy(DebugQuest.default_data)
-    save_data[DebugQuest.VERSION_KEY] = str(DebugQuest.version.bump_major())
+    save_data = DebugQuest.default_data.json()
+    bad_version = str(DebugQuest.version.bump_major())
 
-    # create a new game and try to load with the bad version
+    # try to load with the bad version
     quest = DebugQuest()
     with pytest.raises(QuestLoadError):
-        quest.load(save_data)
+        quest.load_save_data(save_data, bad_version)
+
+
+def test_quest_load_data_fail():
+    """ Tests a quest load fail due to data model mismatch """
+
+    # generate a bad save data version
+    save_data = json.dumps({"this": "nonesense"})
+    save_version = str(DebugQuest.version)
+
+    # try to load with the bad version
+    quest = DebugQuest()
+    with pytest.raises(QuestLoadError):
+        quest.load_save_data(save_data, save_version)
 
 
 def test_quest_load_save():
     """ Tests a successful load with matching semvar """
 
     # generate save data version
-    save_data = deepcopy(DebugQuest.default_data)
-    save_data[DebugQuest.VERSION_KEY] = str(DebugQuest.version)
+    save_data = DebugQuest.default_data.json()
+    save_version = str(DebugQuest.version)
 
     # create a new game and load the good version
     quest = DebugQuest()
-    quest.load(save_data)
-    assert quest.get_save_data().items() >= save_data.items()
+    quest.load_save_data(save_data, save_version)
+    assert json.loads(quest.get_save_data()).items() >= json.loads(save_data).items()

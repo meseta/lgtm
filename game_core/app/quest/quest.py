@@ -6,11 +6,12 @@ from enum import Enum
 from abc import ABC, abstractmethod
 from copy import deepcopy
 
+from pydantic import BaseModel, create_model, ValidationError
 from semver import VersionInfo  # type:  ignore
 
 from app.game import Game
 from app.firebase_utils import db
-from .exceptions import QuestError, QuestLoadError
+from .exceptions import QuestError, QuestLoadError, QuestSaveError
 
 
 def semver_safe(start: VersionInfo, dest: VersionInfo) -> bool:
@@ -59,14 +60,9 @@ class Quest(ABC):
         quest = cls()
         quest.game = game
 
-        # load data if it exists
-        quest_doc = db.collection("quest").document(quest.key).get()
-        if quest_doc.exists:
-            quest.load(quest_doc.to_dict())
-
-        # save data, this will upgrade version if it exists
-        # TODO: avoid overwriting a game in progress
-        quest_doc.reference.set(quest.get_save_data())
+        # load data if it exists, and then save data to upgrade version
+        quest.load()
+        quest.save()
 
         return quest
 
@@ -85,13 +81,22 @@ class Quest(ABC):
     def description(cls) -> str:
         return NotImplemented
 
-    default_data: ClassVar[Dict[str, Any]] = {}
-    quest_data: Dict[str, Any] = {}
-    VERSION_KEY = "_version"
-    NAME_KEY = "_name"
+
+    @property
+    @abstractmethod
+    def QuestDataModel(cls) -> Type[BaseModel]:
+        return NotImplemented
+
+    @property
+    @abstractmethod
+    def default_data(cls) -> BaseModel:
+        return NotImplemented
+
+    quest_data: BaseModel
     game: Optional[Game] = None
 
     def __init_subclass__(self):
+        """ Subclasses instantiate by copying default data """
         self.quest_data = deepcopy(self.default_data)
 
     @property
@@ -100,24 +105,44 @@ class Quest(ABC):
             raise ValueError("game parent not set")
         return f"{self.game.key}:{self.__class__.__name__}"
 
-    def load(self, save_data: Dict[str, Any]) -> None:
+    def load(self) -> None:
+        """ Load data from bucket """
+        quest_doc = db.collection("quest").document(self.key).get()
+
+        if quest_doc.exists:
+            quest_dict = quest_doc.to_dict()
+            if "data" in quest_dict and "version" in quest_dict:
+                self.load_save_data(quest_dict["data"], quest_dict["version"])
+
+    def save(self) -> None:
+        """ Save data to storage """
+
+        quest_ref = db.collection("quest").document(self.key)
+        quest_ref.set(
+            {
+                "data": self.get_save_data(),
+                "version": str(self.version),
+            }
+        )
+
+    def load_save_data(self, save_data: str, version: str) -> None:
         """ Load save data back into structure """
 
         # check save version is safe before upgrading
-        save_semver = VersionInfo.parse(save_data[self.VERSION_KEY])
+        save_semver = VersionInfo.parse(version)
         if not semver_safe(save_semver, self.version):
             raise QuestLoadError(
                 f"Unsafe version mismatch! {save_semver} -> {self.version}"
             )
 
-        self.quest_data.update(save_data)
+        try:
+            self.quest_data = self.QuestDataModel.parse_raw(save_data)
+        except ValidationError as err:
+            raise QuestLoadError(f"Quest data validation error! {err}") from err
 
-    def get_save_data(self) -> Dict[str, Any]:
+    def get_save_data(self) -> str:
         """ Updates save data with new version and output """
-
-        self.quest_data[self.VERSION_KEY] = str(self.version)
-        self.quest_data[self.NAME_KEY] = str(self.__class__.__name__)
-        return self.quest_data
+        return self.quest_data.json()
 
     def __repr__(self):
         return f"{self.__class__.__name__}(game={repr(self.game)})"

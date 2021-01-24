@@ -20,7 +20,9 @@ all_quests: Dict[str, Type[Quest]] = {
     DEBUG_QUEST_KEY: DebugQuest,
 }
 
-for _, module_name, _ in pkgutil.iter_modules(path=[Path(__file__) / "quests"]):
+for _, module_name, _ in pkgutil.iter_modules(
+    path=[str(Path(__file__).parent / "quests")]
+):
     module = importlib.import_module(".quests." + module_name, __package__)
     classes = inspect.getmembers(module, inspect.isclass)
 

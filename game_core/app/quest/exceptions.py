@@ -11,3 +11,7 @@ class QuestError(Exception):
 
 class QuestLoadError(QuestError):
     """ Exception for when load fails """
+
+
+class QuestSaveError(QuestError):
+    """ Exception for when save fails """
