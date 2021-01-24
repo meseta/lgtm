@@ -5,6 +5,7 @@ name = "pypi"
 
 [scripts]
 test = "pytest"
+test_report = "bash -c 'pytest --cov-report=html && python -m http.server --directory htmlcov'"
 deploy = "./deploy.sh"
 
 [packages]
@@ -17,6 +18,7 @@ functions-framework = "==2.1.0"
 google-cloud-pubsub = "*"
 pygithub = "*"
 environs = "*"
+flask-cors = "*"
 
 [dev-packages]
 mypy = "*"

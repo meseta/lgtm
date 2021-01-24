@@ -9,6 +9,7 @@ from functions_framework import create_app  # type: ignore
 
 from app.firebase_utils import db, firestore
 from app.github_utils import GitHubHookFork
+import app.github_utils.github
 
 from app.user import User, Source
 from app.game import Game
@@ -19,6 +20,7 @@ TEST_FILES = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
     "test_files",
 )
+
 
 class Payload:  # pylint: disable=too-few-public-methods
     """ Container for holding header/payload pairs during testing"""
@@ -41,6 +43,12 @@ def bad_fork():
     """A payload containing (raw) data, that has been edited to be missing stuff
     but paired wiht a valid signature"""
     return Payload("bad_fork_headers.json", "bad_fork.bin")
+
+
+@pytest.fixture()
+def wrong_fork():
+    """ A payload containing (raw) data, but of the wrong fork """
+    return Payload("wrong_fork_headers.json", "wrong_fork.bin")
 
 
 @pytest.fixture(scope="module")
@@ -89,6 +97,15 @@ def test_no_signature(webhook_listener_client, good_fork):
         "/", headers={"Content-Type": "application/json"}, data=good_fork.payload
     )
     assert res.status_code == 403
+
+
+def test_wrong_fork(webhook_listener_client, wrong_fork):
+    """ For a good fork that's working fine """
+
+    res = webhook_listener_client.post(
+        "/", headers=wrong_fork.headers, data=wrong_fork.payload
+    )
+    assert res.status_code == 404
 
 
 def test_good_fork(webhook_listener_client, good_fork):

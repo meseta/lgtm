@@ -50,6 +50,7 @@ jobs:
           WEB_API_KEY: ${{ secrets.WEB_API_KEY }}
           WEBHOOK_SECRET: this_is_a_secret
           GH_TEST_TOKEN: ${{ secrets.GH_TEST_TOKEN }}
+          GH_TEST_ID: ${{ secrets.GH_TEST_ID }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: pipenv run test
           

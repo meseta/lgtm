@@ -12,11 +12,15 @@ from functions_framework import create_app  # type: ignore
 
 from app.firebase_utils import app, db, firestore
 from app.models import UserData
+from app.quest import Quest
+from app.game import Game
+from app.user import User, Source
 
 env = Env()
 FUNCTION_SOURCE = "app/main.py"
 WEB_API_KEY = env("WEB_API_KEY")
 GH_TEST_TOKEN = env("GH_TEST_TOKEN")
+GH_TEST_ID = env("GH_TEST_ID")
 
 
 @pytest.fixture(scope="module")
@@ -60,21 +64,20 @@ def test_user_token(test_auth_user):
 
 
 @pytest.fixture
-def test_user_data():
+def user_data():
     """ Creates test user data """
     return UserData(
         profileImage="",
         name="Yuan Gao",
         handle="meseta",
-        id="930832",
+        id=GH_TEST_ID,
         accessToken=GH_TEST_TOKEN,
     ).dict()
 
-
 # pylint: disable=redefined-outer-name
-def test_unauthenticated(auth_flow_client):
+def test_unauthenticated(auth_flow_client, user_data):
     """ Test unauthenticated """
-    res = auth_flow_client.post("/")
+    res = auth_flow_client.post("/", json=user_data)
     assert res.status_code == 403
 
 
@@ -91,25 +94,48 @@ def test_user_invalid(auth_flow_client, test_user_token):
     assert res.status_code == 400
 
 
-def test_github_invalid(auth_flow_client, test_user_token, test_user_data):
+def test_github_invalid(auth_flow_client, test_user_token, user_data):
     """ Test when github token is invalid """
 
-    test_user_data["accessToken"] = "foobar"  # make access token bad
+    user_data["accessToken"] = "foobar"  # make access token bad
     res = auth_flow_client.post(
-        "/", headers={"Authorization": "Bearer " + test_user_token}, json=test_user_data
+        "/", headers={"Authorization": "Bearer " + test_user_token}, json=user_data
     )
     assert res.status_code == 400
 
-
-def test_good_flow(auth_flow_client, test_user_token, test_user_data, test_auth_user):
+def test_id_mismatch(auth_flow_client, test_user_token, user_data):
     """ Test a successful flow """
 
+    user_data["id"] = "foobar"  # make id bad
     res = auth_flow_client.post(
-        "/", headers={"Authorization": "Bearer " + test_user_token}, json=test_user_data
+        "/", headers={"Authorization": "Bearer " + test_user_token}, json=user_data
+    )
+    assert res.status_code == 403
+
+
+def test_good_flow(auth_flow_client, test_user_token, user_data, test_auth_user):
+    """ Test a successful flow """
+
+    # make sure a game exists for user
+    user = User.reference(Source.GITHUB, user_data["id"])
+    game = Game.new(user, "fork_url")
+
+    res = auth_flow_client.post(
+        "/", headers={"Authorization": "Bearer " + test_user_token}, json=user_data
     )
     assert res.status_code == 200
 
     # check firestore
     doc = db.collection("users").document(test_auth_user.uid).get()
     assert doc.exists
-    assert doc.get("id") == test_user_data["id"]
+    assert doc.get("id") == user_data["id"]
+
+    # cleanup
+    db.collection("game").document(game.key).delete()
+    db.collection("system").document("stats").update({"games": firestore.Increment(-1)})
+
+    # cleanup auto-created quest too
+    QuestClass = Quest.get_first()
+    quest = QuestClass()
+    quest.game = game
+    db.collection("quest").document(quest.key).delete()
