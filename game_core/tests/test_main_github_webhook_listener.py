@@ -12,7 +12,7 @@ from app.github_utils import GitHubHookFork
 import app.github_utils.github
 
 from app.user import User, Source
-from app.game import Game
+from app.game import Game, NoGame
 from app.quest import Quest
 
 FUNCTION_SOURCE = "app/main.py"
@@ -120,7 +120,7 @@ def test_good_fork(webhook_listener_client, good_fork):
     user_id = json.loads(good_fork.payload)["forkee"]["owner"]["id"]
     user = User.reference(Source.GITHUB, user_id)
     game = Game.find_by_user(user)
-    assert game is not None
+    assert game is not NoGame
 
     # cleanup
     db.collection("game").document(game.key).delete()

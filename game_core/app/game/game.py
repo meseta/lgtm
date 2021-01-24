@@ -1,9 +1,13 @@
 """ Game entity management """
 
 from __future__ import annotations
-from typing import Optional
+from typing import Union
 from app.firebase_utils import db, firestore
-from app.user import User
+from app.user import User, NoUser
+
+
+class NoGame:
+    """ Return value for when no game is found """
 
 
 class Game:
@@ -49,21 +53,21 @@ class Game:
         return game
 
     @classmethod
-    def find_by_user(cls, user: User) -> Optional[Game]:
+    def find_by_user(cls, user: User) -> Union[Game, NoGame]:
         """ Find a game by user_key and return ref object for it, or None """
         docs = db.collection("game").where("user_key", "==", user.key).stream()
         for doc in docs:
             game = cls()
             game.user = user
             return game
-        return None
+        return NoGame
 
-    user: Optional[User] = None
+    user: Union[User, NoUser] = NoUser
 
     @property
     def key(self) -> str:
-        if not self.user:
-            raise ValueError("user parent not set")
+        if self.user is NoUser:
+            raise AttributeError("user parent not set")
         return f"{self.user.key}"
 
     def assign_to_uid(self, uid: str) -> None:

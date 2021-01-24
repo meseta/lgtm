@@ -1,7 +1,7 @@
 """ Base Classes for quest objects """
 from __future__ import annotations
 
-from typing import Any, List, Dict, ClassVar, Type, Optional
+from typing import Any, List, Dict, ClassVar, Type
 from enum import Enum
 from abc import ABC, abstractmethod
 from copy import deepcopy
@@ -10,7 +10,7 @@ from inspect import isclass
 from pydantic import BaseModel, create_model, ValidationError
 from semver import VersionInfo  # type:  ignore
 
-from app.game import Game
+from app.game import Game, NoGame
 from app.firebase_utils import db
 from .exceptions import QuestError, QuestLoadError, QuestSaveError
 from .stage import Stage
@@ -26,6 +26,10 @@ def semver_safe(start: VersionInfo, dest: VersionInfo) -> bool:
         return False
 
     return True
+
+
+class NoData(BaseModel):
+    """ Empty class used for when no data is loaded """
 
 
 class Difficulty(Enum):
@@ -103,13 +107,13 @@ class Quest(ABC):
             if isclass(class_var) and issubclass(class_var, Stage):
                 cls.stages[name] = class_var
 
-    quest_data: Optional[BaseModel] = None
-    game: Optional[Game] = None
+    quest_data: BaseModel = NoData()
+    game: Union[Game, NoGame] = NoGame
 
     @property
     def key(self) -> str:
-        if not self.game:
-            raise ValueError("game parent not set")
+        if self.game is NoGame:
+            raise AttributeError("game parent not set")
         return f"{self.game.key}:{self.__class__.__name__}"
 
     def load(self) -> None:

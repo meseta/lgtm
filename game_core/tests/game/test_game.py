@@ -2,7 +2,8 @@
 
 import pytest
 from app.firebase_utils import db
-from app.game import Game
+from app.game import Game, NoGame
+from app.user import NoUser
 
 # pylint: disable=redefined-outer-name
 def test_bad_new():
@@ -21,7 +22,9 @@ def test_invalid_init():
     """ Test invalid initialization with bad user """
     game = Game()
 
-    with pytest.raises(ValueError):
+    assert game.user is NoUser
+
+    with pytest.raises(AttributeError):
         game.key
 
 
@@ -49,7 +52,7 @@ def test_fail_find_user(random_user):
     """ Test failing to finding a game by user """
 
     game = Game.find_by_user(random_user)
-    assert game is None
+    assert game is NoGame
 
 
 def test_find_user(testing_game):

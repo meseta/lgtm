@@ -17,8 +17,8 @@ from github import Github, BadCredentialsException
 
 from github_utils import verify_signature, check_repo_ours, GitHubHookFork
 from quest import Quest
-from user import User, Source
-from game import Game
+from user import User, NoUser, Source
+from game import Game, NoGame
 
 from models import UserData, StatusReturn
 from framework import inject_pydantic_parse
@@ -50,7 +50,7 @@ def github_webhook_listener(request: Request, hook_fork: GitHubHookFork):
 
     # create a user reference, and then create new game
     user = User.find_by_source_id(Source.GITHUB, user_id)
-    if not user:
+    if user is NoUser:
         user = User.reference(Source.GITHUB, user_id)
 
     game = Game.new(user, fork_url)
@@ -98,7 +98,7 @@ def github_auth_flow(request: Request, user_data: UserData):
     # create new user, and find existing game to assign uid to
     user = User.new(uid=uid, source=Source.GITHUB, user_data=user_data)
     game = Game.find_by_user(user)
-    if game:
+    if game is not NoGame:
         game.assign_to_uid(uid)
     logger.info("Results creating new user and finding game", game=game, user=user)
 

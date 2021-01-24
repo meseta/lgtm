@@ -5,6 +5,7 @@ from app.firebase_utils import db
 from app.quest import Quest, QuestError, DEBUG_QUEST_KEY
 from app.quest.loader import all_quests
 from app.quest.quests.debug import DebugQuest
+from app.game import NoGame
 
 # pylint: disable=redefined-outer-name
 def test_quest_class_fail():
@@ -45,7 +46,9 @@ def test_invalid_init():
     """ Test instantiation with invalid game """
     quest = DebugQuest()
 
-    with pytest.raises(ValueError):
+    assert quest.game is NoGame
+
+    with pytest.raises(AttributeError):
         quest.key
 
 
