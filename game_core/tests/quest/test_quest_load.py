@@ -44,40 +44,46 @@ def test_semver_unsafe(start, dest):
     assert semver_safe(start, dest) == False
 
 
-def test_quest_load_version_fail():
+def test_quest_load_version_fail(testing_game):
     """ Tests a quest load fail due to semver mismatch """
 
-    # generate a bad save data version
-    save_data = DebugQuest.default_data.json()
-    bad_version = str(DebugQuest.version.bump_major())
+    quest = DebugQuest.new(testing_game)
+
+    # generate a save data and make bad
+    storage_model = quest.get_storage_model()
+    storage_model.version = str(DebugQuest.version.bump_major())
 
     # try to load with the bad version
-    quest = DebugQuest()
     with pytest.raises(QuestLoadError):
-        quest.load_save_data(save_data, bad_version)
+        quest.load_storage_model(storage_model)
 
 
-def test_quest_load_data_fail():
+def test_quest_load_data_fail(testing_game):
     """ Tests a quest load fail due to data model mismatch """
 
-    # generate a bad save data version
-    save_data = json.dumps({"this": "nonesense"})
-    save_version = str(DebugQuest.version)
+    quest = DebugQuest.new(testing_game)
 
-    # try to load with the bad version
-    quest = DebugQuest()
+    # generate a save data and make bad
+    storage_model = quest.get_storage_model()
+    storage_model.serialized_data = json.dumps({"this": "nonesense"})
+
+    # try to load with the bad data
     with pytest.raises(QuestLoadError):
-        quest.load_save_data(save_data, save_version)
+        quest.load_storage_model(storage_model)
 
 
-def test_quest_load_save():
+def test_quest_load_save(testing_game):
     """ Tests a successful load with matching semvar """
 
-    # generate save data version
-    save_data = DebugQuest.default_data.json()
-    save_version = str(DebugQuest.version)
+    quest = DebugQuest.new(testing_game)
+
+    # generate a save data and edit a bit
+    storage_model = quest.get_storage_model()
+    storage_model.completed_stages = [DebugQuest.Start.__name__]
 
     # create a new game and load the good version
-    quest = DebugQuest()
-    quest.load_save_data(save_data, save_version)
-    assert json.loads(quest.get_save_data()).items() >= json.loads(save_data).items()
+    quest.load_storage_model(storage_model)
+
+    # check it
+    check_model = quest.get_storage_model()
+    assert check_model.completed_stages == storage_model.completed_stages

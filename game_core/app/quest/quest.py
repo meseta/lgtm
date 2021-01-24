@@ -1,19 +1,19 @@
 """ Base Classes for quest objects """
 from __future__ import annotations
 
-from typing import Any, List, Dict, ClassVar, Type
+from typing import Any, List, Dict, ClassVar, Type, Union
 from enum import Enum
 from abc import ABC, abstractmethod
-from copy import deepcopy
 from inspect import isclass
 
-from pydantic import BaseModel, create_model, ValidationError
+from pydantic import BaseModel, Field, create_model, ValidationError
 from semver import VersionInfo  # type:  ignore
 
 from app.game import Game, NoGame
 from app.firebase_utils import db
 from .exceptions import QuestError, QuestLoadError, QuestSaveError
 from .stage import Stage
+from .sentinels import NoData, NoQuest
 
 
 def semver_safe(start: VersionInfo, dest: VersionInfo) -> bool:
@@ -28,8 +28,10 @@ def semver_safe(start: VersionInfo, dest: VersionInfo) -> bool:
     return True
 
 
-class NoData(BaseModel):
-    """ Empty class used for when no data is loaded """
+class StorageModel(BaseModel):
+    version: str = Field(..., title="Version number to control loading")
+    completed_stages: List[str] = Field([], title="List of completed stage names")
+    serialized_data: str = Field(..., title="Serialized save data")
 
 
 class Difficulty(Enum):
@@ -64,41 +66,45 @@ class Quest(ABC):
             raise ValueError("Game can't be blank")
 
         quest = cls()
-        quest.quest_data = deepcopy(cls.default_data)
+        quest.quest_data = cls.default_data.copy(deep=True)
         quest.game = game
-
-        # load data if it exists, and then save data to upgrade version
-        quest.load()
-        quest.save()
-
         return quest
 
     @property
     @abstractmethod
     def version(cls) -> VersionInfo:
+        """ The version of this quest, used to check against load data """
         return NotImplemented
 
     @property
     @abstractmethod
     def difficulty(cls) -> Difficulty:
+        """ Difficulty metadata, for display purposes only """
         return NotImplemented
 
     @property
     @abstractmethod
     def description(cls) -> str:
+        """ Quest description metadata, for display purposes only """
         return NotImplemented
 
     @property
     @abstractmethod
     def QuestDataModel(cls) -> Type[BaseModel]:
+        """ Pydantic model for loading and saving quest data values """
         return NotImplemented
 
     @property
     @abstractmethod
-    def default_data(cls) -> BaseModel:
+    def Start(cls) -> Type[Stage]:
+        """ The first quest """
         return NotImplemented
 
-    stages: Dict[str, Type[Stage]] = {}
+    # the initial default data to start quests with
+    default_data: ClassVar[BaseModel] = NoData()
+
+    # dynamically generated stages
+    stages: ClassVar[Dict[str, Type[Stage]]] = {}
 
     def __init_subclass__(cls):
         """ Subclasses instantiate by copying default data """
@@ -106,54 +112,66 @@ class Quest(ABC):
         for name, class_var in vars(cls).items():
             if isclass(class_var) and issubclass(class_var, Stage):
                 cls.stages[name] = class_var
+                class_var()
 
+    # loaded player quest data
     quest_data: BaseModel = NoData()
-    game: Union[Game, NoGame] = NoGame
+    completed_stages: List[str] = []
+
+    # the game
+    game: Union[Game, Type[NoGame]] = NoGame
 
     @property
     def key(self) -> str:
-        if self.game is NoGame:
-            raise AttributeError("game parent not set")
-        return f"{self.game.key}:{self.__class__.__name__}"
+        """ Key for referencing in database """
+        if isinstance(self.game, Game):
+            return f"{self.game.key}:{self.__class__.__name__}"
+        raise AttributeError("game parent not valid")
 
     def load(self) -> None:
-        """ Load data from bucket """
+        """ Load data from storage """
         quest_doc = db.collection("quest").document(self.key).get()
 
         if quest_doc.exists:
-            quest_dict = quest_doc.to_dict()
-            if "data" in quest_dict and "version" in quest_dict:
-                self.load_save_data(quest_dict["data"], quest_dict["version"])
+            try:
+                storage_model = StorageModel.parse_obj(quest_doc.to_dict())
+            except ValidationError as err:
+                raise QuestLoadError(f"Storage model validation error! {err}") from err
+
+            self.load_storage_model(storage_model)
 
     def save(self) -> None:
         """ Save data to storage """
 
         quest_ref = db.collection("quest").document(self.key)
-        quest_ref.set(
-            {
-                "data": self.get_save_data(),
-                "version": str(self.version),
-            }
-        )
+        quest_ref.set(self.get_storage_model().dict())
 
-    def load_save_data(self, save_data: str, version: str) -> None:
+    def load_storage_model(self, storage_model: StorageModel) -> None:
         """ Load save data back into structure """
 
         # check save version is safe before upgrading
-        save_semver = VersionInfo.parse(version)
+        save_semver = VersionInfo.parse(storage_model.version)
         if not semver_safe(save_semver, self.version):
             raise QuestLoadError(
                 f"Unsafe version mismatch! {save_semver} -> {self.version}"
             )
 
         try:
-            self.quest_data = self.QuestDataModel.parse_raw(save_data)
+            self.quest_data = self.QuestDataModel.parse_raw(
+                storage_model.serialized_data
+            )
         except ValidationError as err:
             raise QuestLoadError(f"Quest data validation error! {err}") from err
 
-    def get_save_data(self) -> str:
+        self.completed_stages = storage_model.completed_stages
+
+    def get_storage_model(self) -> StorageModel:
         """ Updates save data with new version and output """
-        return self.quest_data.json()
+        return StorageModel(
+            version=str(self.version),
+            completed_stages=self.completed_stages,
+            serialized_data=self.quest_data.json(),
+        )
 
     def __repr__(self):
         return f"{self.__class__.__name__}(game={repr(self.game)})"

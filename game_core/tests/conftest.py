@@ -7,7 +7,7 @@ import random
 from app.firebase_utils import db, firestore
 from app.user import User, Source
 from app.game import Game
-from app.quest import Quest
+from app.quest import Quest, DEBUG_QUEST_KEY
 from app.models import UserData
 
 
@@ -71,6 +71,12 @@ def testing_game(testing_user):
 
     # cleanup auto-created quest too
     QuestClass = Quest.get_first()
+    quest = QuestClass()
+    quest.game = game
+    db.collection("quest").document(quest.key).delete()
+
+    # cleanup auto-created quest too
+    QuestClass = Quest.get_by_name(DEBUG_QUEST_KEY)
     quest = QuestClass()
     quest.game = game
     db.collection("quest").document(quest.key).delete()

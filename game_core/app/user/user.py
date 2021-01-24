@@ -1,7 +1,7 @@
 """ User entity management, note: User entities in firestore are not necessary auth users """
 
 from __future__ import annotations
-from typing import Union
+from typing import Union, Type
 from enum import Enum
 
 from app.models import UserData
@@ -49,7 +49,9 @@ class User:
         return user
 
     @classmethod
-    def find_by_source_id(cls, source: Source, user_id: str) -> Union[User, NoUser]:
+    def find_by_source_id(
+        cls, source: Source, user_id: str
+    ) -> Union[User, Type[NoUser]]:
         """ Find a user based on the source+id """
         user = cls(source, user_id)
         docs = db.collection("users").where("user_key", "==", user.key).stream()

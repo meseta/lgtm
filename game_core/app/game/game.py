@@ -1,7 +1,7 @@
 """ Game entity management """
 
 from __future__ import annotations
-from typing import Union
+from typing import Union, Type
 from app.firebase_utils import db, firestore
 from app.user import User, NoUser
 
@@ -53,7 +53,7 @@ class Game:
         return game
 
     @classmethod
-    def find_by_user(cls, user: User) -> Union[Game, NoGame]:
+    def find_by_user(cls, user: User) -> Union[Game, Type[NoGame]]:
         """ Find a game by user_key and return ref object for it, or None """
         docs = db.collection("game").where("user_key", "==", user.key).stream()
         for doc in docs:
@@ -62,13 +62,13 @@ class Game:
             return game
         return NoGame
 
-    user: Union[User, NoUser] = NoUser
+    user: Union[User, Type[NoUser]] = NoUser
 
     @property
     def key(self) -> str:
-        if self.user is NoUser:
-            raise AttributeError("user parent not set")
-        return f"{self.user.key}"
+        if isinstance(self.user, User):
+            return f"{self.user.key}"
+        raise AttributeError("user parent not valid")
 
     def assign_to_uid(self, uid: str) -> None:
         db.collection("game").document(self.key).set({"user_uid": uid}, merge=True)

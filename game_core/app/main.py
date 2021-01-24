@@ -5,7 +5,7 @@ import structlog  # type: ignore
 from environs import Env
 
 from flask import Request
-from flask_cors import cross_origin
+from flask_cors import cross_origin  # type:  ignore
 
 from firebase_admin.auth import (  # type:  ignore
     verify_id_token,
@@ -15,10 +15,10 @@ from firebase_admin.auth import (  # type:  ignore
 )
 from github import Github, BadCredentialsException
 
-from github_utils import verify_signature, check_repo_ours, GitHubHookFork
-from quest import Quest
-from user import User, NoUser, Source
-from game import Game, NoGame
+from app.github_utils import verify_signature, check_repo_ours, GitHubHookFork
+from app.quest import Quest
+from app.user import User, NoUser, Source
+from app.game import Game, NoGame
 
 from models import UserData, StatusReturn
 from framework import inject_pydantic_parse
