@@ -1,10 +1,11 @@
 """ Base Classes for quest objects """
 from __future__ import annotations
 
-from typing import Any, Dict, ClassVar, Type, Optional
+from typing import Any, List, Dict, ClassVar, Type, Optional
 from enum import Enum
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from inspect import isclass
 
 from pydantic import BaseModel, create_model, ValidationError
 from semver import VersionInfo  # type:  ignore
@@ -12,6 +13,7 @@ from semver import VersionInfo  # type:  ignore
 from app.game import Game
 from app.firebase_utils import db
 from .exceptions import QuestError, QuestLoadError, QuestSaveError
+from .stage import Stage
 
 
 def semver_safe(start: VersionInfo, dest: VersionInfo) -> bool:
@@ -58,6 +60,7 @@ class Quest(ABC):
             raise ValueError("Game can't be blank")
 
         quest = cls()
+        quest.quest_data = deepcopy(cls.default_data)
         quest.game = game
 
         # load data if it exists, and then save data to upgrade version
@@ -81,7 +84,6 @@ class Quest(ABC):
     def description(cls) -> str:
         return NotImplemented
 
-
     @property
     @abstractmethod
     def QuestDataModel(cls) -> Type[BaseModel]:
@@ -92,12 +94,17 @@ class Quest(ABC):
     def default_data(cls) -> BaseModel:
         return NotImplemented
 
-    quest_data: BaseModel
-    game: Optional[Game] = None
+    stages: Dict[str, Type[Stage]] = {}
 
-    def __init_subclass__(self):
+    def __init_subclass__(cls):
         """ Subclasses instantiate by copying default data """
-        self.quest_data = deepcopy(self.default_data)
+        # build class list
+        for name, class_var in vars(cls).items():
+            if isclass(class_var) and issubclass(class_var, Stage):
+                cls.stages[name] = class_var
+
+    quest_data: Optional[BaseModel] = None
+    game: Optional[Game] = None
 
     @property
     def key(self) -> str:
