@@ -117,7 +117,7 @@ def test_good_fork(webhook_listener_client, good_fork):
     assert res.status_code == 200
 
     # check game got created
-    user_id = res.json["user_id"]
+    user_id = json.loads(good_fork.payload)["forkee"]["owner"]["id"]
     user = User.reference(Source.GITHUB, user_id)
     game = Game.find_by_user(user)
     assert game is not None
