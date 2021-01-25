@@ -2,7 +2,7 @@
 
 import pytest
 from app.firebase_utils import db
-from app.user import User, Source
+from app.user import User, NoUser, Source
 from app.models import UserData
 
 # pylint: disable=redefined-outer-name
@@ -39,7 +39,7 @@ def test_second_creation(testing_user):
 def test_fail_find_by_source_id():
     """ Test failing to find a user by source ID """
     user = User.find_by_source_id(Source.TEST, "_user_does_not_exist_")
-    assert user is None
+    assert user is NoUser
 
 
 def test_find_by_source_id(testing_user):

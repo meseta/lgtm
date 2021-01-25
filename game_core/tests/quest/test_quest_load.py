@@ -1,10 +1,10 @@
 """ Test for quest load/save handling system """
 
+import json
 import pytest
-from copy import deepcopy
 from semver import VersionInfo
 
-from app.quest import Quest, QuestError, QuestLoadError
+from app.quest import Quest, QuestError, QuestLoadError, QuestSaveError
 from app.quest.quest import semver_safe
 from app.quest.quests.debug import DebugQuest
 
@@ -43,27 +43,46 @@ def test_semver_unsafe(start, dest):
     assert semver_safe(start, dest) == False
 
 
-def test_quest_load_fail():
+def test_quest_load_version_fail(testing_game):
     """ Tests a quest load fail due to semver mismatch """
 
-    # generate a bad save data version
-    save_data = deepcopy(DebugQuest.default_data)
-    save_data[DebugQuest.VERSION_KEY] = str(DebugQuest.version.bump_major())
+    quest = DebugQuest.new(testing_game)
 
-    # create a new game and try to load with the bad version
-    quest = DebugQuest()
+    # generate a save data and make bad
+    storage_model = quest.get_storage_model()
+    storage_model.version = str(DebugQuest.version.bump_major())
+
+    # try to load with the bad version
     with pytest.raises(QuestLoadError):
-        quest.load(save_data)
+        quest.load_storage_model(storage_model)
 
 
-def test_quest_load_save():
+def test_quest_load_data_fail(testing_game):
+    """ Tests a quest load fail due to data model mismatch """
+
+    quest = DebugQuest.new(testing_game)
+
+    # generate a save data and make bad
+    storage_model = quest.get_storage_model()
+    storage_model.serialized_data = json.dumps({"this": "nonesense"})
+
+    # try to load with the bad data
+    with pytest.raises(QuestLoadError):
+        quest.load_storage_model(storage_model)
+
+
+def test_quest_load_save(testing_game):
     """ Tests a successful load with matching semvar """
 
-    # generate save data version
-    save_data = deepcopy(DebugQuest.default_data)
-    save_data[DebugQuest.VERSION_KEY] = str(DebugQuest.version)
+    quest = DebugQuest.new(testing_game)
+
+    # generate a save data and edit a bit
+    storage_model = quest.get_storage_model()
+    storage_model.completed_stages = [DebugQuest.Start.__name__]
 
     # create a new game and load the good version
-    quest = DebugQuest()
-    quest.load(save_data)
-    assert quest.get_save_data().items() >= save_data.items()
+    quest.load_storage_model(storage_model)
+
+    # check it
+    check_model = quest.get_storage_model()
+    assert check_model.completed_stages == storage_model.completed_stages

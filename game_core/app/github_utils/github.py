@@ -1,14 +1,10 @@
 """ Verify the GitHub webhook secret """
-import os
+
 import hmac
 import hashlib
 
 from environs import Env
-from environs import Env
 from flask import Request
-
-from app.user import User, Source
-from app.game import Game
 
 from .models import GitHubHookFork
 

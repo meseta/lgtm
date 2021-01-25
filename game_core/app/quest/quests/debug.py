@@ -1,16 +1,23 @@
-""" The intro quest """
+""" A quest for debugging purposes """
 
-from typing import TYPE_CHECKING
 from semver import VersionInfo  # type:  ignore
-from ..quest import Quest, Difficulty
+from ..quest import Quest, Difficulty, QuestBaseModel
+from ..stage import DebugStage
 
 
 class DebugQuest(Quest):
+    class QuestDataModel(QuestBaseModel):
+        a: int = 1
+
     version = VersionInfo.parse("1.0.0")
     difficulty = Difficulty.RESERVED
     description = "This is a quest to facilitate testing/debugging"
-    default_data = {"a": 1}
 
+    class Start(DebugStage):
+        children = ["First"]
 
-if TYPE_CHECKING:  # pragma: no cover
-    DebugQuest()
+    class First(DebugStage):
+        children = ["Second"]
+
+    class Second(DebugStage):
+        children = []
