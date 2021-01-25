@@ -16,12 +16,11 @@ from firebase_admin.auth import (  # type:  ignore
 from github import Github, BadCredentialsException
 
 from app.github_utils import verify_signature, check_repo_ours, GitHubHookFork
-from app.quest import Quest
-from app.user import User, NoUser, Source
-from app.game import Game, NoGame
+from app.user import User, Source
+from app.game import Game
 
-from models import UserData, StatusReturn
-from framework import inject_pydantic_parse
+from app.models import UserData, StatusReturn
+from app.framework import inject_pydantic_parse
 
 env = Env()
 CORS_ORIGIN = env("CORS_ORIGIN", "https://lgtm.meseta.dev")
@@ -50,7 +49,7 @@ def github_webhook_listener(request: Request, hook_fork: GitHubHookFork):
 
     # create a user reference, and then create new game
     user = User.find_by_source_id(Source.GITHUB, user_id)
-    if user is NoUser:
+    if not isinstance(user, User):
         user = User.reference(Source.GITHUB, user_id)
 
     game = Game.new(user, fork_url)
@@ -98,7 +97,7 @@ def github_auth_flow(request: Request, user_data: UserData):
     # create new user, and find existing game to assign uid to
     user = User.new(uid=uid, source=Source.GITHUB, user_data=user_data)
     game = Game.find_by_user(user)
-    if game is not NoGame:
+    if isinstance(game, Game):
         game.assign_to_uid(uid)
     logger.info("Results creating new user and finding game", game=game, user=user)
 

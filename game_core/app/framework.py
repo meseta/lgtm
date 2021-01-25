@@ -6,7 +6,7 @@ from pydantic import ValidationError
 import structlog  # type: ignore
 from flask import Request, jsonify
 
-from models import StatusReturn
+from app.models import StatusReturn
 
 logger = structlog.get_logger(__name__)
 

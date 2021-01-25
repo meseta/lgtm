@@ -1,25 +1,23 @@
-""" The intro quest """
+""" A quest for debugging purposes """
 
-from typing import TYPE_CHECKING
-
-from pydantic import BaseModel
 from semver import VersionInfo  # type:  ignore
-from ..quest import Quest, Difficulty
-from ..stage import CreateIssueStage
+from ..quest import Quest, Difficulty, QuestBaseModel
+from ..stage import DebugStage
 
 
 class DebugQuest(Quest):
-    class QuestDataModel(BaseModel):
-        a: int
+    class QuestDataModel(QuestBaseModel):
+        a: int = 1
 
     version = VersionInfo.parse("1.0.0")
     difficulty = Difficulty.RESERVED
     description = "This is a quest to facilitate testing/debugging"
-    default_data = QuestDataModel(a=1)
 
-    class Start(CreateIssueStage):
-        ...
+    class Start(DebugStage):
+        children = ["First"]
 
+    class First(DebugStage):
+        children = ["Second"]
 
-if TYPE_CHECKING:  # pragma: no cover
-    DebugQuest()
+    class Second(DebugStage):
+        children = []

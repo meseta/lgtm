@@ -1,11 +1,14 @@
 """ User entity management, note: User entities in firestore are not necessary auth users """
 
 from __future__ import annotations
-from typing import Union, Type
+from typing import Union, NewType
 from enum import Enum
 
 from app.models import UserData
 from app.firebase_utils import db, firestore
+
+NoUserType = NewType("NoUserType", object)
+NoUser = NoUserType(object())
 
 
 class Source(Enum):
@@ -13,10 +16,6 @@ class Source(Enum):
 
     TEST = "test"
     GITHUB = "github"
-
-
-class NoUser:
-    """ Return value for when no user is found """
 
 
 class User:
@@ -49,9 +48,7 @@ class User:
         return user
 
     @classmethod
-    def find_by_source_id(
-        cls, source: Source, user_id: str
-    ) -> Union[User, Type[NoUser]]:
+    def find_by_source_id(cls, source: Source, user_id: str) -> Union[User, NoUserType]:
         """ Find a user based on the source+id """
         user = cls(source, user_id)
         docs = db.collection("users").where("user_key", "==", user.key).stream()

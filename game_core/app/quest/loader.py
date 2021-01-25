@@ -1,8 +1,7 @@
 """ Dynamically load quest data """
 
 from __future__ import annotations
-from typing import Dict, Type, TYPE_CHECKING
-import os
+from typing import Dict, Type
 import pkgutil
 import importlib
 import inspect
@@ -10,7 +9,7 @@ from pathlib import Path
 
 from .quests.intro import IntroQuest
 from .quests.debug import DebugQuest
-from .quest import Quest
+from .quest import Quest, Difficulty
 
 FIRST_QUEST_KEY = "__FIRST__"
 DEBUG_QUEST_KEY = "__DEBUG__"
@@ -27,7 +26,10 @@ for _, module_name, _ in pkgutil.iter_modules(
     classes = inspect.getmembers(module, inspect.isclass)
 
     for parent, QuestClass in classes:
-        if Quest in QuestClass.__bases__:
+        if (
+            Quest in QuestClass.__bases__
+            and QuestClass.difficulty != Difficulty.RESERVED
+        ):
             if QuestClass.__name__ in all_quests:
                 raise ValueError(
                     f"Duplicate quests found with name {QuestClass.__name__}"

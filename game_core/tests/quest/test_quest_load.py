@@ -1,7 +1,6 @@
 """ Test for quest load/save handling system """
 
 import json
-from copy import deepcopy
 import pytest
 from semver import VersionInfo
 

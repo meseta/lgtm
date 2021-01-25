@@ -74,6 +74,7 @@ def user_data():
         accessToken=GH_TEST_TOKEN,
     ).dict()
 
+
 # pylint: disable=redefined-outer-name
 def test_unauthenticated(auth_flow_client, user_data):
     """ Test unauthenticated """
@@ -102,6 +103,7 @@ def test_github_invalid(auth_flow_client, test_user_token, user_data):
         "/", headers={"Authorization": "Bearer " + test_user_token}, json=user_data
     )
     assert res.status_code == 400
+
 
 def test_id_mismatch(auth_flow_client, test_user_token, user_data):
     """ Test a successful flow """

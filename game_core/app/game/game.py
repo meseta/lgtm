@@ -1,13 +1,13 @@
 """ Game entity management """
 
 from __future__ import annotations
-from typing import Union, Type
+from typing import Union, NewType
+
 from app.firebase_utils import db, firestore
-from app.user import User, NoUser
+from app.user import User, NoUser, NoUserType
 
-
-class NoGame:
-    """ Return value for when no game is found """
+NoGameType = NewType("NoGameType", object)
+NoGame = NoGameType(object())
 
 
 class Game:
@@ -53,16 +53,16 @@ class Game:
         return game
 
     @classmethod
-    def find_by_user(cls, user: User) -> Union[Game, Type[NoGame]]:
+    def find_by_user(cls, user: User) -> Union[Game, NoGameType]:
         """ Find a game by user_key and return ref object for it, or None """
         docs = db.collection("game").where("user_key", "==", user.key).stream()
-        for doc in docs:
+        for _ in docs:
             game = cls()
             game.user = user
             return game
         return NoGame
 
-    user: Union[User, Type[NoUser]] = NoUser
+    user: Union[User, NoUserType] = NoUser
 
     @property
     def key(self) -> str:

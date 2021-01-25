@@ -1,1 +1,1 @@
-from .user import User, NoUser, Source
+from .user import User, NoUser, NoUserType, Source

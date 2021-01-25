@@ -15,3 +15,7 @@ class QuestLoadError(QuestError):
 
 class QuestSaveError(QuestError):
     """ Exception for when save fails """
+
+
+class QuestDefinitionError(QuestError):
+    """ Exception for when the quest definition is broken """

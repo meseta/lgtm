@@ -3,7 +3,6 @@
 import pytest
 from app.firebase_utils import db
 from app.quest import Quest, QuestError, QuestLoadError, DEBUG_QUEST_KEY
-from app.quest.loader import all_quests
 from app.quest.quests.debug import DebugQuest
 from app.game import NoGame
 
@@ -23,13 +22,6 @@ def test_get_quest():
     quest = QuestClass()
     assert str(quest)
     assert repr(quest)
-
-
-def test_all_quest_instantiate():
-    """ Instantiate all quests to check abstract base class implementation """
-
-    for QuestClass in all_quests.values():
-        QuestClass()  # should succeed if correctly implemented
 
 
 def test_new_quest_fail():

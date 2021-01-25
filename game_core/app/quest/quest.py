@@ -1,19 +1,19 @@
 """ Base Classes for quest objects """
 from __future__ import annotations
 
-from typing import Any, List, Dict, ClassVar, Type, Union
+from typing import List, Dict, ClassVar, Type, Union, cast
 from enum import Enum
 from abc import ABC, abstractmethod
 from inspect import isclass
+from graphlib import TopologicalSorter, CycleError
 
-from pydantic import BaseModel, Field, create_model, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 from semver import VersionInfo  # type:  ignore
 
-from app.game import Game, NoGame
+from app.game import Game, NoGame, NoGameType
 from app.firebase_utils import db
-from .exceptions import QuestError, QuestLoadError, QuestSaveError
+from .exceptions import QuestError, QuestLoadError, QuestDefinitionError
 from .stage import Stage
-from .sentinels import NoData, NoQuest
 
 
 def semver_safe(start: VersionInfo, dest: VersionInfo) -> bool:
@@ -28,7 +28,12 @@ def semver_safe(start: VersionInfo, dest: VersionInfo) -> bool:
     return True
 
 
-class StorageModel(BaseModel):
+class QuestBaseModel(BaseModel):
+    class Config:
+        extra = "forbid"
+
+
+class StorageModel(QuestBaseModel):
     version: str = Field(..., title="Version number to control loading")
     completed_stages: List[str] = Field([], title="List of completed stage names")
     serialized_data: str = Field(..., title="Serialized save data")
@@ -44,6 +49,9 @@ class Difficulty(Enum):
 
 
 class Quest(ABC):
+    ######
+    # Factory methods
+    ######
     @classmethod
     def get_by_name(cls, name: str) -> Type[Quest]:
         from .loader import all_quests  # avoid circular import
@@ -66,10 +74,13 @@ class Quest(ABC):
             raise ValueError("Game can't be blank")
 
         quest = cls()
-        quest.quest_data = cls.default_data.copy(deep=True)
+        quest.quest_data = cls.QuestDataModel()
         quest.game = game
         return quest
 
+    ######
+    # ABC
+    ######
     @property
     @abstractmethod
     def version(cls) -> VersionInfo:
@@ -90,36 +101,38 @@ class Quest(ABC):
 
     @property
     @abstractmethod
-    def QuestDataModel(cls) -> Type[BaseModel]:
-        """ Pydantic model for loading and saving quest data values """
-        return NotImplemented
-
-    @property
-    @abstractmethod
     def Start(cls) -> Type[Stage]:
         """ The first quest """
         return NotImplemented
 
-    # the initial default data to start quests with
-    default_data: ClassVar[BaseModel] = NoData()
+    @property
+    @abstractmethod
+    def stages(cls) -> Dict[str, Type[Stage]]:
+        """ The initial default data to start quests with """
+        return NotImplemented
 
-    # dynamically generated stages
-    stages: ClassVar[Dict[str, Type[Stage]]] = {}
+    # default, overridable model is empty pydantic model
+    QuestDataModel: ClassVar[Type[QuestBaseModel]] = QuestBaseModel
 
     def __init_subclass__(cls):
         """ Subclasses instantiate by copying default data """
         # build class list
+        cls.stages = {}
         for name, class_var in vars(cls).items():
             if isclass(class_var) and issubclass(class_var, Stage):
                 cls.stages[name] = class_var
-                class_var()
+
+    ######
+    # Runtime methods
+    ######
 
     # loaded player quest data
-    quest_data: BaseModel = NoData()
+    quest_data: QuestBaseModel = QuestBaseModel()
     completed_stages: List[str] = []
+    graph: TopologicalSorter = TopologicalSorter()
 
     # the game
-    game: Union[Game, Type[NoGame]] = NoGame
+    game: Union[Game, NoGameType] = NoGame
 
     @property
     def key(self) -> str:
@@ -172,6 +185,26 @@ class Quest(ABC):
             completed_stages=self.completed_stages,
             serialized_data=self.quest_data.json(),
         )
+
+    def load_stages(self) -> None:
+        """ loads the stages """
+
+        # load graph
+        self.graph = TopologicalSorter()
+        for stage_name, StageClass in self.stages.items():
+            for child_name in cast(List[str], StageClass.children):
+                if child_name not in self.stages:
+                    raise QuestDefinitionError(
+                        f"Quest does not have stage named '{child_name}'"
+                    )
+                self.graph.add(child_name, stage_name)
+
+        try:
+            self.graph.prepare()
+        except CycleError as err:
+            raise QuestDefinitionError(
+                f"Quest {self.__class__.__name__} prepare failed! {err}"
+            ) from err
 
     def __repr__(self):
         return f"{self.__class__.__name__}(game={repr(self.game)})"

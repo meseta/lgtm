@@ -1,11 +1,6 @@
 """ Sentinels """
 
-from pydantic import BaseModel
+from typing import NewType
 
-
-class NoData(BaseModel):
-    """ Empty class used for when no data is loaded """
-
-
-class NoQuest:
-    """ Empty class used for when no quest """
+NoQuestType = NewType("NoQuestType", object)
+NoQuest = NoQuestType(object())
