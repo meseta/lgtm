@@ -122,3 +122,15 @@ jobs:
           name: github_webhook_listener
           runtime: python39
           env_vars: 'WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }},APP_VERSION=${{ steps.short_sha.outputs.sha7 }}'
+
+      - name: Deploy Tick
+        uses: google-github-actions/deploy-cloud-functions@v0.1.2
+        with:
+          credentials: ${{ secrets.GCP_CREDENTIALS }}
+          service_account_email: ${{ secrets.GCP_FUNCTIONS_SERVICE_ACCOUNT }}
+          source_dir: '${{ env.workdir }}/app'
+          name: tick
+          event_trigger_type: providers/cloud.pubsub/eventTypes/topic.publish
+          event_trigger_resource: projects/${{ secrets.GCP_PROJECT_ID }}/topics/tick
+          runtime: python39
+          env_vars: 'APP_VERSION=${{ steps.short_sha.outputs.sha7 }}'

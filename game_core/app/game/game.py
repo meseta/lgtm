@@ -49,6 +49,7 @@ class Game:
         # create starting quest if not exist
         QuestClass = get_first_quest()
         quest = QuestClass(self)
+        quest.execute_stages()
         quest.save()
 
     @property
