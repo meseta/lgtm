@@ -1,19 +1,26 @@
 """ Base Classes for quest objects """
 from __future__ import annotations
 
-from typing import List, Dict, ClassVar, Type, Union, cast
-from enum import Enum
+from typing import List, Dict, ClassVar, Type, cast, TYPE_CHECKING
+
 from abc import ABC, abstractmethod
 from inspect import isclass
 from graphlib import TopologicalSorter, CycleError
 
-from pydantic import BaseModel, Field, ValidationError
+from structlog import get_logger
+from pydantic import ValidationError
 from semver import VersionInfo  # type:  ignore
 
-from app.game import Game, NoGame, NoGameType
 from app.firebase_utils import db
-from .exceptions import QuestError, QuestLoadError, QuestDefinitionError
-from .stage import Stage
+
+from .exceptions import QuestLoadError, QuestDefinitionError
+from .models import Difficulty, StorageModel, QuestBaseModel
+
+if TYPE_CHECKING:
+    from .stage import Stage  # pragma: no cover
+    from app.game import Game  # pragma: no cover
+
+logger = get_logger(__name__)
 
 
 def semver_safe(start: VersionInfo, dest: VersionInfo) -> bool:
@@ -28,59 +35,7 @@ def semver_safe(start: VersionInfo, dest: VersionInfo) -> bool:
     return True
 
 
-class QuestBaseModel(BaseModel):
-    class Config:
-        extra = "forbid"
-
-
-class StorageModel(QuestBaseModel):
-    version: str = Field(..., title="Version number to control loading")
-    completed_stages: List[str] = Field([], title="List of completed stage names")
-    serialized_data: str = Field(..., title="Serialized save data")
-
-
-class Difficulty(Enum):
-    RESERVED = 0
-    BEGINNER = 1
-    INTERMEDIATE = 2
-    ADVANCED = 3
-    EXPERT = 4
-    HACKER = 5
-
-
 class Quest(ABC):
-    ######
-    # Factory methods
-    ######
-    @classmethod
-    def get_by_name(cls, name: str) -> Type[Quest]:
-        from .loader import all_quests  # avoid circular import
-
-        try:
-            return all_quests[name]
-        except KeyError as err:
-            raise QuestError(f"No quest name {name}") from err
-
-    @classmethod
-    def get_first(cls) -> Type[Quest]:
-        from .loader import FIRST_QUEST_KEY  # avoid circular import
-
-        return cls.get_by_name(FIRST_QUEST_KEY)
-
-    @classmethod
-    def new(cls, game: Game) -> Quest:
-        """ create a new quest whose parent is `game` """
-        if not game:
-            raise ValueError("Game can't be blank")
-
-        quest = cls()
-        quest.quest_data = cls.QuestDataModel()
-        quest.game = game
-        return quest
-
-    ######
-    # ABC
-    ######
     @property
     @abstractmethod
     def version(cls) -> VersionInfo:
@@ -101,12 +56,6 @@ class Quest(ABC):
 
     @property
     @abstractmethod
-    def Start(cls) -> Type[Stage]:
-        """ The first quest """
-        return NotImplemented
-
-    @property
-    @abstractmethod
     def stages(cls) -> Dict[str, Type[Stage]]:
         """ The initial default data to start quests with """
         return NotImplemented
@@ -116,30 +65,37 @@ class Quest(ABC):
 
     def __init_subclass__(cls):
         """ Subclasses instantiate by copying default data """
+        from .stage import Stage  # avoid cyclic import
+
         # build class list
         cls.stages = {}
         for name, class_var in vars(cls).items():
             if isclass(class_var) and issubclass(class_var, Stage):
                 cls.stages[name] = class_var
 
-    ######
-    # Runtime methods
-    ######
-
     # loaded player quest data
-    quest_data: QuestBaseModel = QuestBaseModel()
-    completed_stages: List[str] = []
-    graph: TopologicalSorter = TopologicalSorter()
+    quest_data: QuestBaseModel
+    completed_stages: List[str]
+    graph: TopologicalSorter
 
     # the game
-    game: Union[Game, NoGameType] = NoGame
+    game: Game
+
+    # whether complete
+    complete: bool
+
+    def __init__(self, game: Game):
+        if not game:
+            raise ValueError("Game cannot be blank")
+
+        self.game = game
+        self.quest_data = self.QuestDataModel()
+        self.load()
 
     @property
     def key(self) -> str:
         """ Key for referencing in database """
-        if isinstance(self.game, Game):
-            return f"{self.game.key}:{self.__class__.__name__}"
-        raise AttributeError("game parent not valid")
+        return f"{self.game.key}:{self.__class__.__name__}"
 
     def load(self) -> None:
         """ Load data from storage """
@@ -149,9 +105,17 @@ class Quest(ABC):
             try:
                 storage_model = StorageModel.parse_obj(quest_doc.to_dict())
             except ValidationError as err:
-                raise QuestLoadError(f"Storage model validation error! {err}") from err
+                raise QuestLoadError(
+                    f"{self} Storage model validation error! {err}"
+                ) from err
 
             self.load_storage_model(storage_model)
+        else:
+            self.quest_data = self.QuestDataModel()
+            self.completed_stages = []
+            self.complete = False
+
+        self.load_stages()
 
     def save(self) -> None:
         """ Save data to storage """
@@ -166,7 +130,7 @@ class Quest(ABC):
         save_semver = VersionInfo.parse(storage_model.version)
         if not semver_safe(save_semver, self.version):
             raise QuestLoadError(
-                f"Unsafe version mismatch! {save_semver} -> {self.version}"
+                f"{self} Unsafe version mismatch in! {save_semver} -> {self.version}"
             )
 
         try:
@@ -174,9 +138,10 @@ class Quest(ABC):
                 storage_model.serialized_data
             )
         except ValidationError as err:
-            raise QuestLoadError(f"Quest data validation error! {err}") from err
+            raise QuestLoadError(f"{self} data validation error! {err}") from err
 
         self.completed_stages = storage_model.completed_stages
+        self.complete = storage_model.complete
 
     def get_storage_model(self) -> StorageModel:
         """ Updates save data with new version and output """
@@ -184,6 +149,7 @@ class Quest(ABC):
             version=str(self.version),
             completed_stages=self.completed_stages,
             serialized_data=self.quest_data.json(),
+            complete=self.complete,
         )
 
     def load_stages(self) -> None:
@@ -195,16 +161,64 @@ class Quest(ABC):
             for child_name in cast(List[str], StageClass.children):
                 if child_name not in self.stages:
                     raise QuestDefinitionError(
-                        f"Quest does not have stage named '{child_name}'"
+                        f"{self} does not have stage named '{child_name}'"
                     )
                 self.graph.add(child_name, stage_name)
 
         try:
             self.graph.prepare()
         except CycleError as err:
-            raise QuestDefinitionError(
-                f"Quest {self.__class__.__name__} prepare failed! {err}"
-            ) from err
+            raise QuestDefinitionError(f"{self} prepare failed! {err}") from err
+
+    def execute_stages(self) -> None:
+        """ Executes stages """
+
+        log = logger.bind(quest=self)
+        log.info("Begin execution")
+
+        while self.graph.is_active():
+            ready_nodes = self.graph.get_ready()
+
+            if not ready_nodes:
+                log.info("No more ready nodes, stopping execution")
+                break
+
+            log.info("Got Ready nodes", ready_nodes=ready_nodes)
+
+            for node in ready_nodes:
+                # skip if completed, avoids triggering two final stages
+                if self.complete:
+                    log.info("Done flag set, skipping the rest")
+                    return
+
+                # completed node: TODO: just not put completed nodes into the graph?
+                if node in self.completed_stages:
+                    self.graph.done(node)
+                    log.info(
+                        "Node is already complete, skipping",
+                        node=node,
+                        complete=self.completed_stages,
+                    )
+                    continue
+
+                log_node = log.bind(node=node)
+                log_node.info("Begin processing stage")
+
+                # instantiate stage and execute
+                StageClass = self.stages[node]
+                stage = StageClass(self)
+                stage.prepare()
+
+                if stage.condition():
+                    log_node.info("Condition check passed, executing")
+                    stage.execute()
+
+                    if stage.is_done():
+                        log_node.info("Stage reports done")
+                        self.completed_stages.append(node)
+                        self.graph.done(node)
+
+        log.info("Done processing node")
 
     def __repr__(self):
         return f"{self.__class__.__name__}(game={repr(self.game)})"

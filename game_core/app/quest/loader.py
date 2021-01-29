@@ -7,6 +7,7 @@ import importlib
 import inspect
 from pathlib import Path
 
+from .exceptions import QuestError
 from .quests.intro import IntroQuest
 from .quests.debug import DebugQuest
 from .quest import Quest, Difficulty
@@ -35,3 +36,14 @@ for _, module_name, _ in pkgutil.iter_modules(
                     f"Duplicate quests found with name {QuestClass.__name__}"
                 )  # pragma: no cover
             all_quests[QuestClass.__name__] = QuestClass
+
+
+def get_quest_by_name(name: str) -> Type[Quest]:
+    try:
+        return all_quests[name]
+    except KeyError as err:
+        raise QuestError(f"No quest name {name}") from err
+
+
+def get_first_quest() -> Type[Quest]:
+    return get_quest_by_name(FIRST_QUEST_KEY)

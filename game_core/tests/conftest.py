@@ -5,9 +5,9 @@ import string
 import random
 
 from app.firebase_utils import db, firestore
-from app.user import User, Source
-from app.game import Game
-from app.quest import Quest, DEBUG_QUEST_KEY
+from app.user import User, Source, find_user_by_source_id
+from app.game import Game, find_game_by_user
+from app.quest import Quest, DEBUG_QUEST_KEY, get_quest_by_name, get_first_quest
 from app.models import UserData
 
 
@@ -19,33 +19,31 @@ def random_id():
 
 @pytest.fixture
 def random_user():
-    """ A random user for testing, cleans up afterwards """
-    uid = "test_" + "".join([random.choice(string.ascii_letters) for _ in range(10)])
-
-    user_data = UserData(
-        profileImage="", name="Test User", handle="test_user", id=uid, accessToken=""
+    """ A random user for testing, does not write to database """
+    user_id = "test_" + "".join(
+        [random.choice(string.ascii_letters) for _ in range(10)]
     )
-
-    user = User.new(uid, Source.TEST, user_data)
-    yield user
-
-    # cleanup
-    db.collection("users").document(uid).delete()
-    db.collection("system").document("stats").update(
-        {"players": firestore.Increment(-1)}
-    )
+    return User(Source.TEST, user_id)
 
 
 @pytest.fixture(scope="package")
 def testing_user():
     """ A user for testing, that can have games assigned, cleans up afterwards """
-    uid = "test_" + "".join([random.choice(string.ascii_letters) for _ in range(10)])
+    user_id = "test_" + "".join(
+        [random.choice(string.ascii_letters) for _ in range(10)]
+    )
+    uid = user_id
 
     user_data = UserData(
-        profileImage="", name="Test User", handle="test_user", id=uid, accessToken=""
+        profileImage="",
+        name="Test User",
+        handle="test_user",
+        id=user_id,
+        accessToken="",
     )
 
-    user = User.new(uid, Source.TEST, user_data)
+    user = User(Source.TEST, user_id)
+    user.create_with_data(uid, user_data)
     yield user
 
     # cleanup
@@ -62,7 +60,8 @@ def testing_game(testing_user):
         [random.choice(string.ascii_letters) for _ in range(10)]
     )
 
-    game = Game.new(testing_user, fork_url)
+    game = Game(testing_user)
+    game.new(fork_url)
     yield game
 
     # cleanup
@@ -70,13 +69,11 @@ def testing_game(testing_user):
     db.collection("system").document("stats").update({"games": firestore.Increment(-1)})
 
     # cleanup auto-created quest too
-    QuestClass = Quest.get_first()
-    quest = QuestClass()
-    quest.game = game
+    QuestClass = get_first_quest()
+    quest = QuestClass(game)
     db.collection("quest").document(quest.key).delete()
 
     # cleanup auto-created quest too
-    QuestClass = Quest.get_by_name(DEBUG_QUEST_KEY)
-    quest = QuestClass()
-    quest.game = game
+    QuestClass = get_quest_by_name(DEBUG_QUEST_KEY)
+    quest = QuestClass(game)
     db.collection("quest").document(quest.key).delete()
