@@ -7,12 +7,12 @@ from environs import Env
 import pytest
 import requests
 
-from firebase_admin import auth
+from firebase_admin import auth  # type: ignore
 from functions_framework import create_app  # type: ignore
 
 from app.firebase_utils import app, db, firestore
 from app.models import UserData
-from app.quest import Quest
+from app.quest import get_first_quest
 from app.game import Game
 from app.user import User, Source
 
@@ -119,8 +119,9 @@ def test_good_flow(auth_flow_client, test_user_token, user_data, test_auth_user)
     """ Test a successful flow """
 
     # make sure a game exists for user
-    user = User.reference(Source.GITHUB, user_data["id"])
-    game = Game.new(user, "fork_url")
+    user = User(Source.GITHUB, user_data["id"])
+    game = Game(user)
+    game.new("fork_url")
 
     res = auth_flow_client.post(
         "/", headers={"Authorization": "Bearer " + test_user_token}, json=user_data
@@ -137,7 +138,6 @@ def test_good_flow(auth_flow_client, test_user_token, user_data, test_auth_user)
     db.collection("system").document("stats").update({"games": firestore.Increment(-1)})
 
     # cleanup auto-created quest too
-    QuestClass = Quest.get_first()
-    quest = QuestClass()
-    quest.game = game
+    QuestClass = get_first_quest()
+    quest = QuestClass(game)
     db.collection("quest").document(quest.key).delete()

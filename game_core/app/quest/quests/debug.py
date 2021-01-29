@@ -2,7 +2,7 @@
 
 from semver import VersionInfo  # type:  ignore
 from ..quest import Quest, Difficulty, QuestBaseModel
-from ..stage import DebugStage
+from ..stage import DebugStage, FinalStage
 
 
 class DebugQuest(Quest):
@@ -19,5 +19,5 @@ class DebugQuest(Quest):
     class First(DebugStage):
         children = ["Second"]
 
-    class Second(DebugStage):
-        children = []
+    class Second(FinalStage):
+        pass

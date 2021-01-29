@@ -16,8 +16,8 @@ from firebase_admin.auth import (  # type:  ignore
 from github import Github, BadCredentialsException
 
 from app.github_utils import verify_signature, check_repo_ours, GitHubHookFork
-from app.user import User, Source
-from app.game import Game
+from app.user import User, Source, find_user_by_source_id
+from app.game import Game, find_game_by_user
 
 from app.models import UserData, StatusReturn
 from app.framework import inject_pydantic_parse
@@ -48,11 +48,12 @@ def github_webhook_listener(request: Request, hook_fork: GitHubHookFork):
     fork_url = hook_fork.forkee.url
 
     # create a user reference, and then create new game
-    user = User.find_by_source_id(Source.GITHUB, user_id)
+    user = find_user_by_source_id(source=Source.GITHUB, user_id=user_id)
     if not isinstance(user, User):
-        user = User.reference(Source.GITHUB, user_id)
+        user = User(Source.GITHUB, user_id)
 
-    game = Game.new(user, fork_url)
+    game = Game(user)
+    game.new(fork_url)
     logger.info("Created new game for user", game=game, user=user)
 
     return StatusReturn(success=True)
@@ -85,18 +86,20 @@ def github_auth_flow(request: Request, user_data: UserData):
     # authenticate GitHub
     github = Github(user_data.accessToken)
     try:
-        user_id = github.get_user().id
+        user_id = str(github.get_user().id)
     except BadCredentialsException as err:
         logger.warn("Bad Github credential", err=err)
         return StatusReturn(error="Bad GitHub credential", http_code=400)
 
-    if str(user_id) != user_data.id:
+    if user_id != user_data.id:
         return StatusReturn(error="ID mismatch", http_code=403)
     logger.info("Got github ID", user_id=user_id)
 
     # create new user, and find existing game to assign uid to
-    user = User.new(uid=uid, source=Source.GITHUB, user_data=user_data)
-    game = Game.find_by_user(user)
+    user = User(source=Source.GITHUB, user_id=user_id)
+    user.create_with_data(uid=uid, user_data=user_data)
+
+    game = find_game_by_user(user)
     if isinstance(game, Game):
         game.assign_to_uid(uid)
     logger.info("Results creating new user and finding game", game=game, user=user)

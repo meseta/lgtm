@@ -1,10 +1,10 @@
 """ Models for validation pubsub payloads """
 from typing import Optional
-from pydantic import (
+from pydantic import (  # pylint: disable=no-name-in-module
     BaseModel,
     Field,
     root_validator,
-)  # pylint: disable=no-name-in-module
+)
 
 # pylint: disable=too-few-public-methods,missing-class-docstring
 class UserData(BaseModel):

@@ -46,7 +46,7 @@ def test_semver_unsafe(start, dest):
 def test_quest_load_version_fail(testing_game):
     """ Tests a quest load fail due to semver mismatch """
 
-    quest = DebugQuest.new(testing_game)
+    quest = DebugQuest(testing_game)
 
     # generate a save data and make bad
     storage_model = quest.get_storage_model()
@@ -60,7 +60,7 @@ def test_quest_load_version_fail(testing_game):
 def test_quest_load_data_fail(testing_game):
     """ Tests a quest load fail due to data model mismatch """
 
-    quest = DebugQuest.new(testing_game)
+    quest = DebugQuest(testing_game)
 
     # generate a save data and make bad
     storage_model = quest.get_storage_model()
@@ -74,7 +74,7 @@ def test_quest_load_data_fail(testing_game):
 def test_quest_load_save(testing_game):
     """ Tests a successful load with matching semvar """
 
-    quest = DebugQuest.new(testing_game)
+    quest = DebugQuest(testing_game)
 
     # generate a save data and edit a bit
     storage_model = quest.get_storage_model()
