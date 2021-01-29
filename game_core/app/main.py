@@ -19,8 +19,8 @@ from app.github_utils import verify_signature, check_repo_ours, GitHubHookFork
 from app.user import User, Source, find_user_by_source_id
 from app.game import Game, find_game_by_user
 
-from app.models import UserData, StatusReturn
-from app.framework import inject_pydantic_parse
+from app.models import UserData, StatusReturn, TickEvent
+from app.framework import inject_http_model, inject_pubsub_model
 
 env = Env()
 CORS_ORIGIN = env("CORS_ORIGIN", "https://lgtm.meseta.dev")
@@ -29,7 +29,7 @@ logger = structlog.get_logger(__name__).bind(version=env("APP_VERSION", "test"))
 logger.info("Started")
 
 
-@inject_pydantic_parse
+@inject_http_model
 def github_webhook_listener(request: Request, hook_fork: GitHubHookFork):
     """ A listener for github webhooks """
 
@@ -54,7 +54,9 @@ def github_webhook_listener(request: Request, hook_fork: GitHubHookFork):
 
     game = Game(user)
     game.new(fork_url)
-    logger.info("Created new game for user", game=game, user=user)
+    logger.info("Created new game for user, executing", game=game, user=user)
+
+    logger.info("Done executing")
 
     return StatusReturn(success=True)
 
@@ -64,7 +66,7 @@ def github_webhook_listener(request: Request, hook_fork: GitHubHookFork):
     headers=["Authorization", "Content-Type"],
     supports_credentials=True,
 )
-@inject_pydantic_parse
+@inject_http_model
 def github_auth_flow(request: Request, user_data: UserData):
     """ Validates a user from github and creates user """
 
@@ -105,3 +107,9 @@ def github_auth_flow(request: Request, user_data: UserData):
     logger.info("Results creating new user and finding game", game=game, user=user)
 
     return StatusReturn(success=True)
+
+
+@inject_pubsub_model
+def tick(tick_event: TickEvent):
+    """ Game tick """
+    logger.info("Tick", source=tick_event.source)

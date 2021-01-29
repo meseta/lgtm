@@ -40,3 +40,13 @@ gcloud functions deploy github_auth_flow \
     --source app \
     --set-env-vars=WEB_API_KEY=$WEB_API_KEY \
     --service-account=$GCP_FUNCTIONS_SERVICE_ACCOUNT
+
+# Deploy tick
+gcloud functions deploy tick \
+    --entry-point tick \
+    --runtime python39 \
+    --trigger-event "providers/cloud.pubsub/eventTypes/topic.publish" \
+    --trigger-resource "tick" \
+    --memory=128MB \
+    --source app \
+    --service-account=$GCP_FUNCTIONS_SERVICE_ACCOUNT
