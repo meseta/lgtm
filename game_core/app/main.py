@@ -1,6 +1,5 @@
 """ Game core """
 
-
 import structlog  # type: ignore
 from environs import Env
 
@@ -15,12 +14,13 @@ from firebase_admin.auth import (  # type:  ignore
 )
 from github import Github, BadCredentialsException
 
-from app.github_utils import verify_signature, check_repo_ours, GitHubHookFork
-from app.user import User, Source, find_user_by_source_id
-from app.game import Game, find_game_by_user
-
-from app.models import UserData, StatusReturn, TickEvent
-from app.framework import inject_http_model, inject_pubsub_model
+from github_utils import verify_signature, check_repo_ours, GitHubHookFork
+from user import User, Source
+from game import Game
+from quest import Quest
+from models import UserData, StatusReturn
+from tick import TickEvent
+from framework import inject_http_model, inject_pubsub_model
 
 env = Env()
 CORS_ORIGIN = env("CORS_ORIGIN", "https://lgtm.meseta.dev")
@@ -47,14 +47,12 @@ def github_webhook_listener(request: Request, hook_fork: GitHubHookFork):
     user_id = str(hook_fork.forkee.owner.id)
     fork_url = hook_fork.forkee.url
 
-    # create a user reference, and then create new game
-    user = find_user_by_source_id(source=Source.GITHUB, user_id=user_id)
-    if not isinstance(user, User):
-        user = User(Source.GITHUB, user_id)
+    # fetch a user (or create new one), and then create new game
+    user = User.from_source_id(source=Source.GITHUB, user_id=user_id)
+    game = Game.new_from_fork(user, fork_url)
 
-    game = Game(user)
-    game.new(fork_url)
     logger.info("Created new game for user, executing", game=game, user=user)
+    game.start_first_quest()
 
     logger.info("Done executing")
 
@@ -97,13 +95,13 @@ def github_auth_flow(request: Request, user_data: UserData):
         return StatusReturn(error="ID mismatch", http_code=403)
     logger.info("Got github ID", user_id=user_id)
 
-    # create new user, and find existing game to assign uid to
-    user = User(source=Source.GITHUB, user_id=user_id)
-    user.create_with_data(uid=uid, user_data=user_data)
+    # create new user if it doesn't exist, and find existing game to assign uid to
+    user = User.new_from_data(uid=uid, source=Source.GITHUB, user_data=user_data)
 
-    game = find_game_by_user(user)
+    game = Game.from_user(user)
     if isinstance(game, Game):
         game.assign_to_uid(uid)
+
     logger.info("Results creating new user and finding game", game=game, user=user)
 
     return StatusReturn(success=True)
@@ -112,4 +110,10 @@ def github_auth_flow(request: Request, user_data: UserData):
 @inject_pubsub_model
 def tick(tick_event: TickEvent):
     """ Game tick """
-    logger.info("Tick", source=tick_event.source)
+    logger.info("Tick", tick_event=tick_event)
+
+    for quest in Quest.iterate_all():
+        logger.info("Executing quest", quest=quest)
+        quest.load()
+        quest.execute_stages(tick_event.tick_type)
+        quest.save()

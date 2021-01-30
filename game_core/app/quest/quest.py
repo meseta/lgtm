@@ -1,7 +1,7 @@
 """ Base Classes for quest objects """
 from __future__ import annotations
 
-from typing import List, Dict, ClassVar, Type, cast, TYPE_CHECKING
+from typing import List, Dict, ClassVar, Type, Generator, cast, TYPE_CHECKING
 
 from abc import ABC, abstractmethod
 from inspect import isclass
@@ -12,9 +12,10 @@ from pydantic import ValidationError
 from semver import VersionInfo  # type:  ignore
 
 from app.firebase_utils import db
-
-from .exceptions import QuestLoadError, QuestDefinitionError
+from app.tick import TickType
+from .exceptions import QuestError, QuestLoadError, QuestDefinitionError
 from .models import Difficulty, StorageModel, QuestBaseModel
+
 
 if TYPE_CHECKING:
     from .stage import Stage  # pragma: no cover
@@ -36,6 +37,45 @@ def semver_safe(start: VersionInfo, dest: VersionInfo) -> bool:
 
 
 class Quest(ABC):
+    @classmethod
+    def get_by_name(cls, name: str) -> Type[Quest]:
+        from .loader import all_quests  # avoid cyclic import
+
+        try:
+            return all_quests[name]
+        except KeyError as err:
+            raise QuestError(f"No quest name {name}") from err
+
+    @classmethod
+    def get_first_quest(cls) -> Type[Quest]:
+        from .loader import FIRST_QUEST_KEY  # avoid cyclic import
+
+        return cls.get_by_name(FIRST_QUEST_KEY)
+
+    @classmethod
+    def from_game(cls, game: Game) -> Quest:
+        key = cls.make_key(game)
+        return cls(key)
+
+    @classmethod
+    def iterate_all(cls) -> Generator[Quest, None, None]:
+        docs = db.collection("quest").where("complete", "!=", True).stream()
+        for doc in docs:
+            key = doc.id
+            quest_name = cls.key_to_quest_name(key)
+            QuestClass = cls.get_by_name(quest_name)
+            quest = QuestClass(key)
+            yield quest
+
+    @classmethod
+    def make_key(cls, game: Game) -> str:
+        """ Key for referencing in database """
+        return f"{game.key}:{cls.__name__}"
+
+    @staticmethod
+    def key_to_quest_name(key: str) -> str:
+        return key.split(":")[-1]
+
     @property
     @abstractmethod
     def version(cls) -> VersionInfo:
@@ -78,24 +118,23 @@ class Quest(ABC):
     completed_stages: List[str]
     graph: TopologicalSorter
 
-    # the game
-    game: Game
+    # the quest ey in the db
+    key: str
 
     # whether complete
     complete: bool
 
-    def __init__(self, game: Game):
-        if not game:
-            raise ValueError("Game cannot be blank")
+    def __init__(self, key: str):
+        if not key:
+            raise ValueError("Key can't be blank")
 
-        self.game = game
-        self.quest_data = self.QuestDataModel()
+        self.key = key
         self.load()
 
-    @property
-    def key(self) -> str:
-        """ Key for referencing in database """
-        return f"{self.game.key}:{self.__class__.__name__}"
+    def exists(self) -> bool:
+        """ Whether quest exists in the database """
+        quest_doc = db.collection("quest").document(self.key).get()
+        return quest_doc.exists
 
     def load(self) -> None:
         """ Load data from storage """
@@ -170,8 +209,8 @@ class Quest(ABC):
         except CycleError as err:
             raise QuestDefinitionError(f"{self} prepare failed! {err}") from err
 
-    def execute_stages(self) -> None:
-        """ Executes stages """
+    def execute_stages(self, tick_type: TickType) -> None:
+        """ Executes stages, tick_type helps nodes know whether to skip certain stages """
 
         log = logger.bind(quest=self)
         log.info("Begin execution")
@@ -221,4 +260,4 @@ class Quest(ABC):
         log.info("Done processing node")
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(game={repr(self.game)})"
+        return f"{self.__class__.__name__}(key={self.key})"

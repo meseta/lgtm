@@ -4,10 +4,10 @@ import pytest
 from semver import VersionInfo  # type:  ignore
 import operator
 
+from app.tick import TickType
 from app.quest import Quest, Difficulty
 from app.quest.quest import QuestBaseModel
 from app.quest.stage import DebugStage, ConditionStage, FinalStage
-from app.firebase_utils import db
 
 
 class TestQuestBranching(Quest):
@@ -43,44 +43,35 @@ class TestQuestBranching(Quest):
 # pylint: disable=redefined-outer-name
 def test_initial_execute(testing_game):
     """  Should only manage to complete 1 stage due to missing data """
-    quest = TestQuestBranching(testing_game)
+    quest = TestQuestBranching.from_game(testing_game)
 
     print(quest.completed_stages)
-    quest.execute_stages()
+    quest.execute_stages(TickType.FULL)
 
     assert len(quest.completed_stages) == 1
     assert "Start" in quest.completed_stages
     assert not quest.complete
 
-    # cleanup
-    db.collection("quest").document(quest.key).delete()
-
 
 def test_ending(testing_game):
     """ Should run til BranchA completion """
 
-    quest = TestQuestBranching(testing_game)
+    quest = TestQuestBranching.from_game(testing_game)
     quest.quest_data.value_b = quest.quest_data.value_a
-    quest.execute_stages()
+    quest.execute_stages(TickType.FULL)
 
     assert "BranchA" in quest.completed_stages
     assert "EndingA" in quest.completed_stages
     assert "BranchB" not in quest.completed_stages
     assert quest.complete
 
-    # cleanup
-    db.collection("quest").document(quest.key).delete()
-
 
 def test_ending2(testing_game):
     """ Test for BranchB completion """
 
-    quest = TestQuestBranching(testing_game)
+    quest = TestQuestBranching.from_game(testing_game)
     quest.quest_data.value_a = 100
-    quest.execute_stages()
+    quest.execute_stages(TickType.FULL)
 
     assert "BranchB" in quest.completed_stages
     assert quest.complete
-
-    # cleanup
-    db.collection("quest").document(quest.key).delete()

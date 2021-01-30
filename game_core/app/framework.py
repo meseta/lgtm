@@ -58,7 +58,8 @@ def inject_pubsub_model(func):
                         b64decode(event["data"]).decode("utf-8")
                     )
                 except ValidationError as err:
-                    raise StatusReturn(error=f"Validation error {err}", http_code=400)
+                    logger.error("Validation error", err=err)
+                    raise err
 
                 logger.info(
                     "Decoded model and injected",
