@@ -7,7 +7,7 @@ from base64 import b64encode
 from functions_framework import create_app  # type: ignore
 
 from app.quest import Quest, DEBUG_QUEST_KEY
-from app.models import TickEvent
+from app.tick import TickEvent, TickType
 
 FUNCTION_SOURCE = "app/main.py"
 
@@ -21,7 +21,7 @@ def tick_client():
 @pytest.fixture
 def tick_payload():
     """ Payload for tick """
-    data = TickEvent(source="test").dict()
+    data = TickEvent(tick_type=TickType.FULL).json()
     return {
         "context": {
             "eventId": "some-eventId",
@@ -29,7 +29,7 @@ def tick_payload():
             "eventType": "some-eventType",
             "resource": "some-resource",
         },
-        "data": {"data": b64encode(json.dumps(data).encode()).decode()},
+        "data": {"data": b64encode(data.encode()).decode()},
     }
 
 

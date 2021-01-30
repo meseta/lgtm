@@ -6,6 +6,7 @@ from typing import Union, NewType, TYPE_CHECKING
 from app.firebase_utils import db, firestore
 from app.quest import Quest
 from app.user import NoUser
+from app.tick import TickType
 
 if TYPE_CHECKING:
     from app.user import User, NoUserType  # pragma: no cover
@@ -86,7 +87,7 @@ class Game:
         """ Create starting quest if not exist """
         QuestClass = Quest.get_first_quest()
         quest = QuestClass.from_game(self)
-        quest.execute_stages()
+        quest.execute_stages(TickType.FULL)
         quest.save()
 
     def __repr__(self):

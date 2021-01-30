@@ -18,7 +18,8 @@ from github_utils import verify_signature, check_repo_ours, GitHubHookFork
 from user import User, Source
 from game import Game
 from quest import Quest
-from models import UserData, StatusReturn, TickEvent
+from models import UserData, StatusReturn
+from tick import TickEvent
 from framework import inject_http_model, inject_pubsub_model
 
 env = Env()
@@ -109,10 +110,10 @@ def github_auth_flow(request: Request, user_data: UserData):
 @inject_pubsub_model
 def tick(tick_event: TickEvent):
     """ Game tick """
-    logger.info("Tick", source=tick_event.source)
+    logger.info("Tick", tick_event=tick_event)
 
     for quest in Quest.iterate_all():
         logger.info("Executing quest", quest=quest)
         quest.load()
-        quest.execute_stages()
+        quest.execute_stages(tick_event.tick_type)
         quest.save()

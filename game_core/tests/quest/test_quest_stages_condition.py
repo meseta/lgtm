@@ -4,6 +4,7 @@ import pytest
 from semver import VersionInfo  # type:  ignore
 import operator
 
+from app.tick import TickType
 from app.quest import Quest, Difficulty
 from app.quest.quest import QuestBaseModel
 from app.quest.stage import DebugStage, ConditionStage, FinalStage
@@ -45,7 +46,7 @@ def test_initial_execute(testing_game):
     quest = TestQuestBranching.from_game(testing_game)
 
     print(quest.completed_stages)
-    quest.execute_stages()
+    quest.execute_stages(TickType.FULL)
 
     assert len(quest.completed_stages) == 1
     assert "Start" in quest.completed_stages
@@ -57,7 +58,7 @@ def test_ending(testing_game):
 
     quest = TestQuestBranching.from_game(testing_game)
     quest.quest_data.value_b = quest.quest_data.value_a
-    quest.execute_stages()
+    quest.execute_stages(TickType.FULL)
 
     assert "BranchA" in quest.completed_stages
     assert "EndingA" in quest.completed_stages
@@ -70,7 +71,7 @@ def test_ending2(testing_game):
 
     quest = TestQuestBranching.from_game(testing_game)
     quest.quest_data.value_a = 100
-    quest.execute_stages()
+    quest.execute_stages(TickType.FULL)
 
     assert "BranchB" in quest.completed_stages
     assert quest.complete

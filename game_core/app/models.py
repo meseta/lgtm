@@ -35,9 +35,3 @@ class StatusReturn(BaseModel):
             values["http_code"] = 400
 
         return values
-
-
-class TickEvent(BaseModel):
-    """ Model for ticks """
-
-    source: str = Field(..., title="Source of the tick")

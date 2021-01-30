@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from semver import VersionInfo  # type:  ignore
 
 from app.firebase_utils import db
-
+from app.tick import TickType
 from .exceptions import QuestError, QuestLoadError, QuestDefinitionError
 from .models import Difficulty, StorageModel, QuestBaseModel
 
@@ -209,8 +209,8 @@ class Quest(ABC):
         except CycleError as err:
             raise QuestDefinitionError(f"{self} prepare failed! {err}") from err
 
-    def execute_stages(self) -> None:
-        """ Executes stages """
+    def execute_stages(self, tick_type: TickType) -> None:
+        """ Executes stages, tick_type helps nodes know whether to skip certain stages """
 
         log = logger.bind(quest=self)
         log.info("Begin execution")
