@@ -51,7 +51,7 @@ def github_webhook_listener(request: Request, hook_fork: GitHubHookFork):
     game = Game.new_from_fork(user, fork_url)
 
     logger.info("Created new game for user, executing", game=game, user=user)
-    game.safe_start_first_quest()
+    game.start_first_quest()
 
     logger.info("Done executing")
 

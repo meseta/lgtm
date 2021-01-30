@@ -57,9 +57,9 @@ class User:
                 }
             )
 
-            db.collection("system").document("stats").update(
-                {"players": firestore.Increment(1)}
-            )
+            # db.collection("system").document("stats").update(
+            #     {"players": firestore.Increment(1)}
+            # )
         else:
             doc.reference.set(
                 {

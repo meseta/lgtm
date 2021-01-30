@@ -58,9 +58,9 @@ class Game:
                     "joined": firestore.SERVER_TIMESTAMP,
                 }
             )
-            db.collection("system").document("stats").update(
-                {"games": firestore.Increment(1)}
-            )
+            # db.collection("system").document("stats").update(
+            #     {"games": firestore.Increment(1)}
+            # )
 
         return game
 
@@ -82,14 +82,12 @@ class Game:
         if doc.exists:
             doc.reference.set({"user_uid": uid}, merge=True)
 
-    def safe_start_first_quest(self) -> None:
+    def start_first_quest(self) -> None:
         """ Create starting quest if not exist """
         QuestClass = Quest.get_first_quest()
         quest = QuestClass.from_game(self)
-
-        if not quest.exists():
-            quest.execute_stages()
-            quest.save()
+        quest.execute_stages()
+        quest.save()
 
     def __repr__(self):
         return f"{self.__class__.__name__}(key={self.key})"

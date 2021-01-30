@@ -49,12 +49,6 @@ def testing_user(testing_user_data):
     user = User.new_from_data(uid, Source.TEST, testing_user_data)
     yield user
 
-    # cleanup
-    db.collection("users").document(uid).delete()
-    db.collection("system").document("stats").update(
-        {"players": firestore.Increment(-1)}
-    )
-
 
 @pytest.fixture(scope="package")
 def testing_game(testing_user):
@@ -66,20 +60,6 @@ def testing_game(testing_user):
     game = Game.new_from_fork(testing_user, fork_url)
     yield game
 
-    # cleanup
-    db.collection("game").document(game.key).delete()
-    db.collection("system").document("stats").update({"games": firestore.Increment(-1)})
-
-    # cleanup auto-created quest too
-    QuestClass = Quest.get_first_quest()
-    key = QuestClass.make_key(game)
-    db.collection("quest").document(key).delete()
-
-    # cleanup auto-created quest too
-    QuestClass = Quest.get_by_name(DEBUG_QUEST_KEY)
-    key = QuestClass.make_key(game)
-    db.collection("quest").document(key).delete()
-
 
 @pytest.fixture
 def testing_quest(testing_game):
@@ -88,6 +68,3 @@ def testing_quest(testing_game):
     quest = QuestClass.from_game(testing_game)
 
     yield quest
-
-    # cleanup
-    db.collection("quest").document(quest.key).delete()

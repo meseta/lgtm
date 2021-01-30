@@ -42,10 +42,6 @@ def test_auth_user():
 
     # cleanup
     auth.delete_user(uid)
-    db.collection("users").document(uid).delete()
-    db.collection("system").document("stats").update(
-        {"players": firestore.Increment(-1)}
-    )
 
 
 @pytest.fixture(scope="module")
@@ -131,12 +127,3 @@ def test_good_flow(auth_flow_client, test_user_token, user_data, test_auth_user)
     doc = db.collection("users").document(test_auth_user.uid).get()
     assert doc.exists
     assert doc.get("id") == user_data["id"]
-
-    # cleanup
-    db.collection("game").document(game.key).delete()
-    db.collection("system").document("stats").update({"games": firestore.Increment(-1)})
-
-    # cleanup auto-created quest too
-    QuestClass = Quest.get_first_quest()
-    key = QuestClass.make_key(game)
-    db.collection("quest").document(key).delete()

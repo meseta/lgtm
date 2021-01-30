@@ -12,6 +12,12 @@ def test_nouser_init():
         Game.from_user(NoUser)
 
 
+def test_bad_fork(testing_user):
+    """ Test bad fork """
+    with pytest.raises(ValueError):
+        Game.new_from_fork(testing_user, "")
+
+
 def test_game_repr(testing_user):
     game = Game.from_user(testing_user)
 

@@ -46,6 +46,9 @@ def test_quest_load_fail(testing_quest):
     with pytest.raises(QuestLoadError):
         testing_quest.load()
 
+    # cleanup
+    doc_ref.delete()
+
 
 def test_quest(testing_game):
     """ Test creating a valid quest """

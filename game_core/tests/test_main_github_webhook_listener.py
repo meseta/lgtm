@@ -121,12 +121,3 @@ def test_good_fork(webhook_listener_client, good_fork):
     user = User.from_source_id(Source.GITHUB, user_id)
     game = Game.from_user(user)
     assert isinstance(game, Game)
-
-    # cleanup
-    db.collection("game").document(game.key).delete()
-    db.collection("system").document("stats").update({"games": firestore.Increment(-1)})
-
-    # cleanup auto-created quest too
-    QuestClass = Quest.get_first_quest()
-    key = QuestClass.make_key(game)
-    db.collection("quest").document(key).delete()
