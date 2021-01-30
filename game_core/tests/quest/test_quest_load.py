@@ -43,46 +43,40 @@ def test_semver_unsafe(start, dest):
     assert semver_safe(start, dest) == False
 
 
-def test_quest_load_version_fail(testing_game):
+def test_quest_load_version_fail(testing_quest):
     """ Tests a quest load fail due to semver mismatch """
 
-    quest = DebugQuest(testing_game)
-
     # generate a save data and make bad
-    storage_model = quest.get_storage_model()
+    storage_model = testing_quest.get_storage_model()
     storage_model.version = str(DebugQuest.version.bump_major())
 
     # try to load with the bad version
     with pytest.raises(QuestLoadError):
-        quest.load_storage_model(storage_model)
+        testing_quest.load_storage_model(storage_model)
 
 
-def test_quest_load_data_fail(testing_game):
+def test_quest_load_data_fail(testing_quest):
     """ Tests a quest load fail due to data model mismatch """
 
-    quest = DebugQuest(testing_game)
-
     # generate a save data and make bad
-    storage_model = quest.get_storage_model()
+    storage_model = testing_quest.get_storage_model()
     storage_model.serialized_data = json.dumps({"this": "nonesense"})
 
     # try to load with the bad data
     with pytest.raises(QuestLoadError):
-        quest.load_storage_model(storage_model)
+        testing_quest.load_storage_model(storage_model)
 
 
-def test_quest_load_save(testing_game):
+def test_quest_load_save(testing_quest):
     """ Tests a successful load with matching semvar """
 
-    quest = DebugQuest(testing_game)
-
     # generate a save data and edit a bit
-    storage_model = quest.get_storage_model()
+    storage_model = testing_quest.get_storage_model()
     storage_model.completed_stages = [DebugQuest.Start.__name__]
 
     # create a new game and load the good version
-    quest.load_storage_model(storage_model)
+    testing_quest.load_storage_model(storage_model)
 
     # check it
-    check_model = quest.get_storage_model()
+    check_model = testing_quest.get_storage_model()
     assert check_model.completed_stages == storage_model.completed_stages

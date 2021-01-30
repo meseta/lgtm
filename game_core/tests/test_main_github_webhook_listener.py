@@ -12,8 +12,8 @@ from app.github_utils import GitHubHookFork
 import app.github_utils.github
 
 from app.user import User, Source
-from app.game import Game, find_game_by_user
-from app.quest import get_first_quest
+from app.game import Game
+from app.quest import Quest
 
 FUNCTION_SOURCE = "app/main.py"
 TEST_FILES = os.path.join(
@@ -118,8 +118,8 @@ def test_good_fork(webhook_listener_client, good_fork):
 
     # check game got created
     user_id = json.loads(good_fork.payload)["forkee"]["owner"]["id"]
-    user = User(Source.GITHUB, user_id)
-    game = find_game_by_user(user)
+    user = User.from_source_id(Source.GITHUB, user_id)
+    game = Game.from_user(user)
     assert isinstance(game, Game)
 
     # cleanup
@@ -127,6 +127,6 @@ def test_good_fork(webhook_listener_client, good_fork):
     db.collection("system").document("stats").update({"games": firestore.Increment(-1)})
 
     # cleanup auto-created quest too
-    QuestClass = get_first_quest()
-    quest = QuestClass(game)
-    db.collection("quest").document(quest.key).delete()
+    QuestClass = Quest.get_first_quest()
+    key = QuestClass.make_key(game)
+    db.collection("quest").document(key).delete()

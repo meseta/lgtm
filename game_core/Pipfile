@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [scripts]
-test = "pytest"
+test = "pytest -x"
 test_report = "bash -c 'pytest --cov-report=html && python -m http.server --directory htmlcov'"
 deploy = "./deploy.sh"
 

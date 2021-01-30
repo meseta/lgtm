@@ -5,9 +5,9 @@ import string
 import random
 
 from app.firebase_utils import db, firestore
-from app.user import User, Source, find_user_by_source_id
-from app.game import Game, find_game_by_user
-from app.quest import Quest, DEBUG_QUEST_KEY, get_quest_by_name, get_first_quest
+from app.user import User, Source
+from app.game import Game
+from app.quest import Quest, DEBUG_QUEST_KEY
 from app.models import UserData
 
 
@@ -23,18 +23,15 @@ def random_user():
     user_id = "test_" + "".join(
         [random.choice(string.ascii_letters) for _ in range(10)]
     )
-    return User(Source.TEST, user_id)
+    return User.from_source_id(Source.TEST, user_id)
 
 
 @pytest.fixture(scope="package")
-def testing_user():
-    """ A user for testing, that can have games assigned, cleans up afterwards """
+def testing_user_data():
     user_id = "test_" + "".join(
         [random.choice(string.ascii_letters) for _ in range(10)]
     )
-    uid = user_id
-
-    user_data = UserData(
+    return UserData(
         profileImage="",
         name="Test User",
         handle="test_user",
@@ -42,8 +39,14 @@ def testing_user():
         accessToken="",
     )
 
-    user = User(Source.TEST, user_id)
-    user.create_with_data(uid, user_data)
+
+@pytest.fixture(scope="package")
+def testing_user(testing_user_data):
+    """ A user for testing, that can have games assigned, cleans up afterwards """
+
+    uid = testing_user_data.id
+
+    user = User.new_from_data(uid, Source.TEST, testing_user_data)
     yield user
 
     # cleanup
@@ -60,8 +63,7 @@ def testing_game(testing_user):
         [random.choice(string.ascii_letters) for _ in range(10)]
     )
 
-    game = Game(testing_user)
-    game.new(fork_url)
+    game = Game.new_from_fork(testing_user, fork_url)
     yield game
 
     # cleanup
@@ -69,11 +71,23 @@ def testing_game(testing_user):
     db.collection("system").document("stats").update({"games": firestore.Increment(-1)})
 
     # cleanup auto-created quest too
-    QuestClass = get_first_quest()
-    quest = QuestClass(game)
-    db.collection("quest").document(quest.key).delete()
+    QuestClass = Quest.get_first_quest()
+    key = QuestClass.make_key(game)
+    db.collection("quest").document(key).delete()
 
     # cleanup auto-created quest too
-    QuestClass = get_quest_by_name(DEBUG_QUEST_KEY)
-    quest = QuestClass(game)
+    QuestClass = Quest.get_by_name(DEBUG_QUEST_KEY)
+    key = QuestClass.make_key(game)
+    db.collection("quest").document(key).delete()
+
+
+@pytest.fixture
+def testing_quest(testing_game):
+    """ A random quest for testing, cleans up afterwards """
+    QuestClass = Quest.get_by_name(DEBUG_QUEST_KEY)
+    quest = QuestClass.from_game(testing_game)
+
+    yield quest
+
+    # cleanup
     db.collection("quest").document(quest.key).delete()

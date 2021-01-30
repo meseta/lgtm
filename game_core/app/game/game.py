@@ -4,41 +4,57 @@ from __future__ import annotations
 from typing import Union, NewType, TYPE_CHECKING
 
 from app.firebase_utils import db, firestore
-from app.quest import get_first_quest
+from app.quest import Quest
+from app.user import NoUser
 
 if TYPE_CHECKING:
-    from app.user import User  # pragma: no cover
+    from app.user import User, NoUserType  # pragma: no cover
 
 NoGameType = NewType("NoGameType", object)
 NoGame = NoGameType(object())
 
 
 class Game:
-    def __init__(self, user: User):
-        self.user = user
+    @classmethod
+    def from_user(cls, user: User) -> Union[Game, NoGameType]:
+        """ Create a game from a user """
+        key = cls.make_key(user)
+        game = cls(key)
+        game.user = user
 
-    def new(self, fork_url: str):
-        """ Create a new game if doesn't exist """
+        docs = db.collection("game").where("user_key", "==", user.key).stream()
+        for _ in docs:
+            return game
+        return NoGame
+
+    @classmethod
+    def new_from_fork(cls, user: User, fork_url: str) -> Game:
+        """ Save game with fork """
 
         if not fork_url:
             raise ValueError("Fork can't be blank")
 
-        game_doc = db.collection("game").document(self.key).get()
+        key = cls.make_key(user)
+        game = cls(key)
+        game.user = user
+
+        game_doc = db.collection("game").document(game.key).get()
         if game_doc.exists:
             game_doc.reference.set(
                 {
                     "fork_url": fork_url,
-                    "user_uid": self.user.uid,
-                    "user_key": self.user.key,
+                    "user_uid": user.uid,
+                    "user_key": user.key,
                 },
                 merge=True,
             )
+
         else:
             game_doc.reference.set(
                 {
                     "fork_url": fork_url,
-                    "user_uid": self.user.uid,
-                    "user_key": self.user.key,
+                    "user_uid": user.uid,
+                    "user_key": user.key,
                     "joined": firestore.SERVER_TIMESTAMP,
                 }
             )
@@ -46,26 +62,34 @@ class Game:
                 {"games": firestore.Increment(1)}
             )
 
-        # create starting quest if not exist
-        QuestClass = get_first_quest()
-        quest = QuestClass(self)
-        quest.execute_stages()
-        quest.save()
+        return game
 
-    @property
-    def key(self) -> str:
-        return f"{self.user.key}"
+    @staticmethod
+    def make_key(user: User) -> str:
+        """ Game's key ARE user key due to 1:1 relationship """
+        return user.key
+
+    key: str
+    user: Union[User, NoUserType]
+
+    def __init__(self, key: str):
+        self.key = key
+        self.user = NoUser
 
     def assign_to_uid(self, uid: str) -> None:
-        db.collection("game").document(self.key).set({"user_uid": uid}, merge=True)
+        """ Assign a user to this game """
+        doc = db.collection("game").document(self.key).get()
+        if doc.exists:
+            doc.reference.set({"user_uid": uid}, merge=True)
+
+    def safe_start_first_quest(self) -> None:
+        """ Create starting quest if not exist """
+        QuestClass = Quest.get_first_quest()
+        quest = QuestClass.from_game(self)
+
+        if not quest.exists():
+            quest.execute_stages()
+            quest.save()
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(user={repr(self.user)})"
-
-
-def find_game_by_user(user: User) -> Union[Game, NoGameType]:
-    """ Find a game by user_key and return ref object for it, or None """
-    docs = db.collection("game").where("user_key", "==", user.key).stream()
-    for _ in docs:
-        return Game(user)
-    return NoGame
+        return f"{self.__class__.__name__}(key={self.key})"
