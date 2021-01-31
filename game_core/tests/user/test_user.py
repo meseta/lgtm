@@ -1,7 +1,7 @@
 """ Tests for Game module """
 
 import pytest
-from app.user import User, NoUser, Source
+from user import User, NoUser, Source
 
 # pylint: disable=redefined-outer-name
 def test_reference():

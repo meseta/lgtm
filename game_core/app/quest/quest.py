@@ -11,15 +11,15 @@ from structlog import get_logger
 from pydantic import ValidationError
 from semver import VersionInfo  # type:  ignore
 
-from app.firebase_utils import db
-from app.tick import TickType
+from firebase_utils import db
+from tick import TickType
 from .exceptions import QuestError, QuestLoadError, QuestDefinitionError
 from .models import Difficulty, StorageModel, QuestBaseModel
 
 
 if TYPE_CHECKING:
     from .stage import Stage  # pragma: no cover
-    from app.game import Game  # pragma: no cover
+    from game import Game  # pragma: no cover
 
 logger = get_logger(__name__)
 

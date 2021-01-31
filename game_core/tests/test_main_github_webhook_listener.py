@@ -7,13 +7,13 @@ import pytest
 from pydantic import ValidationError
 from functions_framework import create_app  # type: ignore
 
-from app.firebase_utils import db, firestore
-from app.github_utils import GitHubHookFork
+from firebase_utils import db, firestore
+from github_utils import GitHubHookFork
 import app.github_utils.github
 
-from app.user import User, Source
-from app.game import Game
-from app.quest import Quest
+from user import User, Source
+from game import Game
+from quest import Quest
 
 FUNCTION_SOURCE = "app/main.py"
 TEST_FILES = os.path.join(

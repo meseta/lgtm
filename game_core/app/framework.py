@@ -8,7 +8,7 @@ import structlog  # type: ignore
 from flask import Request, jsonify
 from google.cloud.functions.context import Context  # type:  ignore
 
-from app.models import StatusReturn
+from models import StatusReturn
 
 logger = structlog.get_logger(__name__)
 

@@ -4,11 +4,11 @@ import pytest
 import string
 import random
 
-from app.firebase_utils import db, firestore
-from app.user import User, Source
-from app.game import Game
-from app.quest import Quest, DEBUG_QUEST_KEY
-from app.models import UserData
+from firebase_utils import db, firestore
+from user import User, Source
+from game import Game
+from quest import Quest, DEBUG_QUEST_KEY
+from models import UserData
 
 
 @pytest.fixture

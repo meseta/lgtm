@@ -4,9 +4,9 @@ import json
 import pytest
 from semver import VersionInfo
 
-from app.quest import Quest, QuestError, QuestLoadError, QuestSaveError
-from app.quest.quest import semver_safe
-from app.quest.quests.debug import DebugQuest
+from quest import Quest, QuestError, QuestLoadError, QuestSaveError
+from quest.quest import semver_safe
+from quest.quests.debug import DebugQuest
 
 # pylint: disable=redefined-outer-name
 @pytest.mark.parametrize(

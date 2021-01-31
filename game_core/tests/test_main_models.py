@@ -1,6 +1,6 @@
 """ Tests for main.py """
 
-from app.models import StatusReturn
+from models import StatusReturn
 
 # pylint: disable=redefined-outer-name
 def test_success():

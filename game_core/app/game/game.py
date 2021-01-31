@@ -3,13 +3,13 @@
 from __future__ import annotations
 from typing import Union, NewType, TYPE_CHECKING
 
-from app.firebase_utils import db, firestore
-from app.quest import Quest
-from app.user import NoUser
-from app.tick import TickType
+from firebase_utils import db, firestore
+from quest import Quest
+from user import NoUser
+from tick import TickType
 
 if TYPE_CHECKING:
-    from app.user import User, NoUserType  # pragma: no cover
+    from user import User, NoUserType  # pragma: no cover
 
 NoGameType = NewType("NoGameType", object)
 NoGame = NoGameType(object())
