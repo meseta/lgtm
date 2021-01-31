@@ -3,11 +3,11 @@
 import pytest
 from semver import VersionInfo  # type:  ignore
 
-from app.tick import TickType
-from app.quest import Quest, Difficulty, QuestDefinitionError, DEBUG_QUEST_KEY
-from app.quest.stage import DebugStage
-from app.quest.loader import all_quests
-from app.quest.quests.debug import DebugQuest
+from tick import TickType
+from quest import Quest, Difficulty, QuestDefinitionError, DEBUG_QUEST_KEY
+from quest.stage import DebugStage
+from quest.loader import all_quests
+from quest.quests.debug import DebugQuest
 
 
 class BadQuest(Quest):

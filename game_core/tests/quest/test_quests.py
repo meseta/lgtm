@@ -1,9 +1,9 @@
 """ Test quest data """
 
 import pytest
-from app.firebase_utils import db
-from app.quest import Quest, QuestError, QuestLoadError, DEBUG_QUEST_KEY
-from app.quest.quests.debug import DebugQuest
+from firebase_utils import db
+from quest import Quest, QuestError, QuestLoadError, DEBUG_QUEST_KEY
+from quest.quests.debug import DebugQuest
 
 # pylint: disable=redefined-outer-name
 def test_quest_class_fail():

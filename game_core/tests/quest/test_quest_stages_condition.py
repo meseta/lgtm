@@ -4,10 +4,10 @@ import pytest
 from semver import VersionInfo  # type:  ignore
 import operator
 
-from app.tick import TickType
-from app.quest import Quest, Difficulty
-from app.quest.quest import QuestBaseModel
-from app.quest.stage import DebugStage, ConditionStage, FinalStage
+from tick import TickType
+from quest import Quest, Difficulty
+from quest.quest import QuestBaseModel
+from quest.stage import DebugStage, ConditionStage, FinalStage
 
 
 class TestQuestBranching(Quest):

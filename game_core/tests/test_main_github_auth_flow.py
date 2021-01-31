@@ -10,11 +10,11 @@ import requests
 from firebase_admin import auth  # type: ignore
 from functions_framework import create_app  # type: ignore
 
-from app.firebase_utils import app, db, firestore
-from app.models import UserData
-from app.quest import Quest
-from app.game import Game
-from app.user import User, Source
+from firebase_utils import app, db, firestore
+from models import UserData
+from quest import Quest
+from game import Game
+from user import User, Source
 
 env = Env()
 FUNCTION_SOURCE = "app/main.py"

@@ -6,8 +6,8 @@ from base64 import b64encode
 
 from functions_framework import create_app  # type: ignore
 
-from app.quest import Quest, DEBUG_QUEST_KEY
-from app.tick import TickEvent, TickType
+from quest import Quest, DEBUG_QUEST_KEY
+from tick import TickEvent, TickType
 
 FUNCTION_SOURCE = "app/main.py"
 

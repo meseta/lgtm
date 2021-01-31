@@ -4,10 +4,10 @@ from __future__ import annotations
 from typing import Union, NewType, TYPE_CHECKING
 from enum import Enum
 
-from app.firebase_utils import db, firestore
+from firebase_utils import db, firestore
 
 if TYPE_CHECKING:
-    from app.models import UserData  # pragma: no cover
+    from models import UserData  # pragma: no cover
 
 NoUserType = NewType("NoUserType", object)
 NoUser = NoUserType(object())

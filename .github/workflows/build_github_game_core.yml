@@ -47,6 +47,7 @@ jobs:
       - name: Running tests
         working-directory: ${{ env.workdir }}
         env:
+          ENVIRONMENT: testing
           WEB_API_KEY: ${{ secrets.WEB_API_KEY }}
           WEBHOOK_SECRET: this_is_a_secret
           GH_TEST_TOKEN: ${{ secrets.GH_TEST_TOKEN }}
@@ -91,18 +92,6 @@ jobs:
           pipenv lock -r > ./app/requirements.txt
         
         # note: does not set to 'allow unauthenticated' or memory, deploy manually first
-      - name: Deploy Game Core Function
-        uses: google-github-actions/deploy-cloud-functions@v0.1.2
-        with:
-          credentials: ${{ secrets.GCP_CREDENTIALS }}
-          service_account_email: ${{ secrets.GCP_FUNCTIONS_SERVICE_ACCOUNT }}
-          source_dir: '${{ env.workdir }}/app'
-          name: create_new_game
-          event_trigger_type: providers/cloud.pubsub/eventTypes/topic.publish
-          event_trigger_resource: projects/${{ secrets.GCP_PROJECT_ID }}/topics/create_new_game
-          runtime: python39
-          env_vars: 'APP_VERSION=${{ steps.short_sha.outputs.sha7 }}'
-
       - name: Deploy Github auth Function
         uses: google-github-actions/deploy-cloud-functions@v0.1.2
         with:
@@ -111,7 +100,7 @@ jobs:
           source_dir: '${{ env.workdir }}/app'
           name: github_auth_flow
           runtime: python39
-          env_vars: 'WEB_API_KEY=${{ secrets.WEB_API_KEY }},APP_VERSION=${{ steps.short_sha.outputs.sha7 }}'
+          env_vars: 'WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }},APP_VERSION=${{ steps.short_sha.outputs.sha7 }}'
       
       - name: Deploy Webhook listener Function
         uses: google-github-actions/deploy-cloud-functions@v0.1.2
@@ -133,4 +122,4 @@ jobs:
           event_trigger_type: providers/cloud.pubsub/eventTypes/topic.publish
           event_trigger_resource: projects/${{ secrets.GCP_PROJECT_ID }}/topics/tick
           runtime: python39
-          env_vars: 'APP_VERSION=${{ steps.short_sha.outputs.sha7 }}'
+          env_vars: 'WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }},APP_VERSION=${{ steps.short_sha.outputs.sha7 }}'

@@ -1,9 +1,9 @@
 """ Tests for Game module """
 
 import pytest
-from app.firebase_utils import db
-from app.game import Game, NoGame
-from app.user import NoUser
+from firebase_utils import db
+from game import Game, NoGame
+from user import NoUser
 
 # pylint: disable=redefined-outer-name
 def test_nouser_init():
