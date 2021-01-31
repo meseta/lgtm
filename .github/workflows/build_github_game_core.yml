@@ -53,7 +53,9 @@ jobs:
           GH_TEST_TOKEN: ${{ secrets.GH_TEST_TOKEN }}
           GH_TEST_ID: ${{ secrets.GH_TEST_ID }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-        run: pipenv run test
+        run: |
+          export PYTHONPATH=${PYTHONPATH}:${PWD}/app
+          pipenv run test
           
       - name: Send test report
         uses: 5monkeys/cobertura-action@master
