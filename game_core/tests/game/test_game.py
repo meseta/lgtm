@@ -1,71 +1,30 @@
 """ Tests for Game module """
 
 import pytest
-from firebase_utils import db
-from game import Game, NoGame
-from user import NoUser
-
-# pylint: disable=redefined-outer-name
-def test_nouser_init():
-    """ Test invalid initialization with bad user """
-    with pytest.raises(Exception):
-        Game.from_user(NoUser)
+from game import Game
 
 
-def test_bad_fork(testing_user):
-    """ Test bad fork """
-    with pytest.raises(ValueError):
-        Game.new_from_fork(testing_user, "")
+def test_parent(testing_game, testing_user):
+    """ Test fetching parent object """
+    assert testing_game.parent.key == testing_user.key
 
 
-def test_game_repr(testing_user):
-    game = Game.from_user(testing_user)
-
-    assert str(game)
-    assert repr(game)
+def test_game_repr(testing_game):
+    """ Test repr """
+    assert str(testing_game)
+    assert repr(testing_game)
 
 
 def test_second_creation(testing_game, random_id):
-    """ Test second creation of game """
+    """ Test second creation and setting fork_url """
     fork_url = "url_" + random_id
 
-    # assert url isn't what we'll set it to
-    doc = db.collection("game").document(testing_game.key).get()
-    assert doc.get("fork_url") != fork_url
+    game = Game(testing_game.key)
+    assert game.exists
+    assert testing_game.data.fork_url != fork_url
 
-    # make new game, this will update fork_url
-    testing_game.new_from_fork(testing_game.user, fork_url)
+    game.set_fork_url(fork_url)
+    game.save()
 
-    # check it
-    doc = db.collection("game").document(testing_game.key).get()
-    assert doc.get("fork_url") == fork_url
-
-
-def test_fail_find_user(random_user):
-    """ Test failing to finding a game by user """
-
-    game = Game.from_user(random_user)
-    assert game is NoGame
-
-
-def test_find_user(testing_game):
-    """ Test finding a game by user """
-
-    game = Game.from_user(testing_game.user)
-    assert game.key == testing_game.key
-
-
-def test_assign_uid(testing_game, random_id):
-    """ Test assigning game to an UID """
-
-    new_uid = "uid_" + random_id
-
-    # assert uid isn't what we'll set it to
-    doc = db.collection("game").document(testing_game.key).get()
-    assert doc.get("user_uid") != new_uid
-
-    testing_game.assign_to_uid(new_uid)
-
-    # check it
-    doc = db.collection("game").document(testing_game.key).get()
-    assert doc.get("user_uid") == new_uid
+    testing_game.load()
+    assert testing_game.data.fork_url == fork_url

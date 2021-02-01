@@ -1,16 +1,40 @@
 """ Extra functions for execution environment Functions framework """
 
-from typing import get_type_hints
+from typing import get_type_hints, Optional
 from base64 import b64decode
 
-from pydantic import ValidationError
+from pydantic import (  # pylint: disable=no-name-in-module
+    BaseModel,
+    Field,
+    root_validator,
+    ValidationError,
+)
+
 import structlog  # type: ignore
 from flask import Request, jsonify
 from google.cloud.functions.context import Context  # type:  ignore
 
-from models import StatusReturn
-
 logger = structlog.get_logger(__name__)
+
+
+class StatusReturn(BaseModel):
+    """ Generic ok status """
+
+    success: bool = Field(False, title="Whether action was ok")
+    error: Optional[str] = Field(None, title="Errors if any")
+    http_code: Optional[int] = Field(None, title="HTTP response code")
+
+    @root_validator
+    def set_http_code(cls, values):
+        if values["http_code"] is not None:
+            return values
+
+        if values["success"]:
+            values["http_code"] = 200
+        else:
+            values["http_code"] = 400
+
+        return values
 
 
 def inject_http_model(func):

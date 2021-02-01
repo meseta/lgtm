@@ -15,12 +15,11 @@ from firebase_admin.auth import (  # type:  ignore
 from github import Github, BadCredentialsException
 
 from github_utils import verify_signature, check_repo_ours, GitHubHookFork
-from user import User, Source
+from user import User, Source, UserData
 from game import Game
-from quest import Quest
-from models import UserData, StatusReturn
-from tick import TickEvent
-from framework import inject_http_model, inject_pubsub_model
+from quest_page import QuestPage
+from tick import TickEvent, TickType
+from framework import inject_http_model, inject_pubsub_model, StatusReturn
 
 env = Env()
 CORS_ORIGIN = env("CORS_ORIGIN", "https://lgtm.meseta.dev")
@@ -49,12 +48,20 @@ def github_webhook_listener(request: Request, hook_fork: GitHubHookFork):
 
     # fetch a user (or create new one), and then create new game
     user = User.from_source_id(source=Source.GITHUB, user_id=user_id)
-    game = Game.new_from_fork(user, fork_url)
+    game = Game.from_user(user)
+    game.set_fork_url(fork_url)
+    game.save()
 
-    logger.info("Created new game for user, executing", game=game, user=user)
-    game.start_first_quest()
+    logger.info("Created new game for user", game=game, user=user)
 
-    logger.info("Done executing")
+    # Get first quest, and execute it if it doesn't already exist
+    quest_page = QuestPage.from_game_get_first_quest(game)
+    if not quest_page.exists:
+        logger.info("Creating new quest", quest_page=quest_page)
+        quest_page.execute(TickType.FULL)
+        quest_page.save()
+
+    logger.info("Done creating new game")
 
     return StatusReturn(success=True)
 
@@ -95,14 +102,9 @@ def github_auth_flow(request: Request, user_data: UserData):
         return StatusReturn(error="ID mismatch", http_code=403)
     logger.info("Got github ID", user_id=user_id)
 
-    # create new user if it doesn't exist, and find existing game to assign uid to
+    # create new user
     user = User.new_from_data(uid=uid, source=Source.GITHUB, user_data=user_data)
-
-    game = Game.from_user(user)
-    if isinstance(game, Game):
-        game.assign_to_uid(uid)
-
-    logger.info("Results creating new user and finding game", game=game, user=user)
+    logger.info("Created new user", user=user)
 
     return StatusReturn(success=True)
 
@@ -112,8 +114,7 @@ def tick(tick_event: TickEvent):
     """ Game tick """
     logger.info("Tick", tick_event=tick_event)
 
-    for quest in Quest.iterate_all():
-        logger.info("Executing quest", quest=quest)
-        quest.load()
-        quest.execute_stages(tick_event.tick_type)
-        quest.save()
+    for quest_page in QuestPage.iterate_all():
+        logger.info("Executing quest", quest_page=quest_page)
+        quest_page.execute(tick_event.tick_type)
+        quest_page.save()

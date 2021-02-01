@@ -1,10 +1,11 @@
 """ Tests for Game module """
 
 import pytest
-from user import User, NoUser, Source
+from user import User, Source, NoUid
+from orm import NoKey, OrmNotFound
 
-# pylint: disable=redefined-outer-name
-def test_reference():
+
+def test_init():
     """ Test creation of a hypothetical user"""
     user = User.from_source_id(Source.TEST, "0")
     assert user.key
@@ -12,18 +13,39 @@ def test_reference():
     assert repr(user)
 
 
-def test_not_find_by_source_id():
+def test_random_init():
+    """ This isn't avlid flow, but we're testing it anyway """
+    user = User(NoKey)
+    user.delete()  # shouldn't do anything
+    user.load()  # shouldn't do anything
+
+    assert user.key is NoKey
+    user.save()  # should save with new doc id
+    assert user.key is not NoKey
+
+
+def test_orm(testing_user):
+    """ This actually tests an obscure path in the ORM """
+
+    assert testing_user.parent is OrmNotFound
+
+
+def test_not_from_by_source_id():
     """ Test failing to find a user by source ID """
     user = User.from_source_id(Source.TEST, "_user_does_not_exist_")
-    assert not user.uid
+    assert not user.exists
+    assert user.uid is NoUid
 
 
-def test_find_by_source_id(testing_user):
+def test_from_source_id(testing_user):
     """ Test finding the user by source ID """
 
-    user_id = User.key_to_user_id(testing_user.key)
+    # get user ID for searching from fixture
+    user_id = testing_user.data.id
+
+    # do search
     user = User.from_source_id(Source.TEST, user_id)
-    assert user.uid
+    assert user.exists
     assert user.uid == testing_user.uid
 
 

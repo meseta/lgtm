@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Union, List, Optional, ClassVar, Any, Callable, cast, TYPE_CHECKING
+from typing import List, Optional, ClassVar, Any, Callable, TYPE_CHECKING
 from abc import ABC, abstractmethod
 import operator
 from structlog import get_logger
+
+from character import Character
 
 logger = get_logger(__name__)
 
@@ -59,11 +61,11 @@ class DebugStage(Stage):
 
     def prepare(self) -> None:
         """ Print for debug purposes """
-        logger.warning(f"DEBUG STAGE PREPARE OF {self.quest}")
+        logger.info(f"DEBUG STAGE PREPARE OF {self.quest}")
 
     def execute(self) -> None:
         """ Print for debug purposes """
-        logger.warning(f"DEBUG STAGE EXECUTE OF {self.quest}")
+        logger.info(f"DEBUG STAGE EXECUTE OF {self.quest}")
 
 
 class ConditionStage(Stage):
@@ -92,7 +94,15 @@ class ConditionStage(Stage):
         else:
             value_right = self.compare_value
 
-        return self.operator(value_left, value_right)
+        retval = self.operator(value_left, value_right)
+        logger.info(
+            f"Condition stage",
+            value_left=value_left,
+            value_right=value_right,
+            op=self.operator,
+            retval=retval,
+        )
+        return retval
 
 
 class FinalStage(Stage):
@@ -102,12 +112,23 @@ class FinalStage(Stage):
         cls.children = []
 
     def execute(self) -> None:
-        self.quest.complete = True
+        self.quest.quest_page.mark_quest_complete()
+        logger.info(f"Final stage")
 
 
 class CreateIssueStage(Stage):
     """ This stage posts a new issue to a user's fork """
 
+    # which character will post the issue
+    character: ClassVar[Character]
+
+    @abstractmethod
+    def create_message(cls) -> str:
+        """ Should return the message to be posted """
+        return NotImplemented
+
     def execute(self) -> None:
-        """ Print for debug purposes """
-        logger.warning(f"DEBUG STAGE EXECUTE OF {self.quest}")
+        """ Post the issue to the fork """
+        # self.character.create_issue(self.quest)
+
+        logger.info("Creating issue")

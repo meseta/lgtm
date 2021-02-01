@@ -1,8 +1,8 @@
 """ Tests for main.py """
 
-from models import StatusReturn
+from app.framework import StatusReturn
 
-# pylint: disable=redefined-outer-name
+
 def test_success():
     """ Test success return model """
 

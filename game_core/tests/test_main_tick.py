@@ -5,8 +5,6 @@ import json
 from base64 import b64encode
 
 from functions_framework import create_app  # type: ignore
-
-from quest import Quest, DEBUG_QUEST_KEY
 from tick import TickEvent, TickType
 
 FUNCTION_SOURCE = "app/main.py"
@@ -41,23 +39,22 @@ def test_bad_payload(tick_client, tick_payload):
     assert res.status_code != 200
 
 
-def test_tick(tick_client, tick_payload, testing_game):
+def test_tick(tick_client, tick_payload, testing_quest_page):
     """ Test tick """
 
     # create new game
-    QuestClass = Quest.get_by_name(DEBUG_QUEST_KEY)
-    quest = QuestClass.from_game(testing_game)
-    quest.save()
+    testing_quest_page.save()
 
     # load it
-    assert quest.exists()
-    assert not quest.complete
-    assert not quest.completed_stages
+    assert testing_quest_page.exists
+    assert not testing_quest_page.is_quest_complete()
 
     res = tick_client.post("/", json=tick_payload)
     assert res.status_code == 200
 
     # check if it's complete now
-    quest.load()
-    assert quest.complete
-    assert len(quest.completed_stages) == len(quest.stages)
+    testing_quest_page.load()
+    assert testing_quest_page.is_quest_complete()
+    assert len(testing_quest_page.data.completed_stages) == len(
+        testing_quest_page.quest.stages
+    )

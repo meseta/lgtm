@@ -11,10 +11,9 @@ from firebase_admin import auth  # type: ignore
 from functions_framework import create_app  # type: ignore
 
 from firebase_utils import app, db, firestore
-from models import UserData
 from quest import Quest
 from game import Game
-from user import User, Source
+from user import User, Source, UserData
 
 env = Env()
 FUNCTION_SOURCE = "app/main.py"
@@ -114,16 +113,11 @@ def test_id_mismatch(auth_flow_client, test_user_token, user_data):
 def test_good_flow(auth_flow_client, test_user_token, user_data, test_auth_user):
     """ Test a successful flow """
 
-    # make sure a game exists for user
-    user = User.from_source_id(Source.GITHUB, user_data["id"])
-    game = Game.new_from_fork(user, "fork_url")
-
     res = auth_flow_client.post(
         "/", headers={"Authorization": "Bearer " + test_user_token}, json=user_data
     )
     assert res.status_code == 200
 
     # check firestore
-    doc = db.collection("users").document(test_auth_user.uid).get()
-    assert doc.exists
-    assert doc.get("id") == user_data["id"]
+    user = User.from_source_id(Source.GITHUB, user_data["id"])
+    assert user.exists
