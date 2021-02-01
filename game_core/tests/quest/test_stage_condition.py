@@ -40,38 +40,39 @@ class TestQuestBranching(Quest):
         children = []
 
 
-# pylint: disable=redefined-outer-name
-def test_initial_execute(testing_game):
+def test_initial_execute(testing_quest_page):
     """  Should only manage to complete 1 stage due to missing data """
-    quest = TestQuestBranching.from_game(testing_game)
+    quest = TestQuestBranching(testing_quest_page)
+    quest.execute(TickType.FULL)
 
-    print(quest.completed_stages)
-    quest.execute_stages(TickType.FULL)
-
-    assert len(quest.completed_stages) == 1
-    assert "Start" in quest.completed_stages
-    assert not quest.complete
+    assert len(testing_quest_page.data.completed_stages) == 1
+    assert "Start" in testing_quest_page.data.completed_stages
+    assert not testing_quest_page.is_quest_complete()
 
 
-def test_ending(testing_game):
+def test_ending(testing_quest_page):
     """ Should run til BranchA completion """
 
-    quest = TestQuestBranching.from_game(testing_game)
+    quest = TestQuestBranching(testing_quest_page)
     quest.quest_data.value_b = quest.quest_data.value_a
-    quest.execute_stages(TickType.FULL)
+    quest.execute(TickType.FULL)
 
-    assert "BranchA" in quest.completed_stages
-    assert "EndingA" in quest.completed_stages
-    assert "BranchB" not in quest.completed_stages
-    assert quest.complete
+    assert testing_quest_page.is_stage_complete("BranchA")
+    assert testing_quest_page.is_stage_complete("EndingA")
+    assert not testing_quest_page.is_stage_complete("BranchB")
+    assert not testing_quest_page.is_stage_complete("EndingB")
+    assert testing_quest_page.is_quest_complete()
 
 
-def test_ending2(testing_game):
+def test_ending2(testing_quest_page):
     """ Test for BranchB completion """
 
-    quest = TestQuestBranching.from_game(testing_game)
+    quest = TestQuestBranching(testing_quest_page)
     quest.quest_data.value_a = 100
-    quest.execute_stages(TickType.FULL)
+    quest.execute(TickType.FULL)
 
-    assert "BranchB" in quest.completed_stages
-    assert quest.complete
+    assert testing_quest_page.is_stage_complete("BranchB")
+    assert testing_quest_page.is_stage_complete("EndingB")
+    assert not testing_quest_page.is_stage_complete("BranchA")
+    assert not testing_quest_page.is_stage_complete("EndingA")
+    assert testing_quest_page.is_quest_complete()

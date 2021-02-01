@@ -2,81 +2,59 @@
 
 import json
 import pytest
+
 from semver import VersionInfo
-
-from quest import Quest, QuestError, QuestLoadError, QuestSaveError
-from quest.quest import semver_safe
-from quest.quests.debug import DebugQuest
-
-# pylint: disable=redefined-outer-name
-@pytest.mark.parametrize(
-    "start, dest",
-    [
-        ("1.1.1", "1.1.2"),  # patch increment is ok
-        ("1.1.2", "1.1.1"),  # patch decrement is ok
-        ("1.1.1", "1.2.1"),  # minor increment is ok
-        ("1.1.1", "1.2.2"),  # minor+patch bump is ok
-        ("1.1.2", "1.2.1"),  # minor+patch bump is ok
-    ],
-)
-def test_semver_safe(start, dest):
-    """ Tests semver safe loading"""
-
-    start = VersionInfo.parse(start)
-    dest = VersionInfo.parse(dest)
-    assert semver_safe(start, dest) == True
+from quest import QuestLoadError
 
 
-@pytest.mark.parametrize(
-    "start, dest",
-    [
-        ("2.1.1", "1.1.1"),  # major increment not safe
-        ("1.1.1", "2.1.1"),  # major decement not safe
-        ("1.2.1", "1.1.1"),  # minor decrement not safe
-    ],
-)
-def test_semver_unsafe(start, dest):
-    """ Tests semver unsafe loading"""
-
-    start = VersionInfo.parse(start)
-    dest = VersionInfo.parse(dest)
-    assert semver_safe(start, dest) == False
-
-
-def test_quest_load_version_fail(testing_quest):
+def test_quest_load_version_fail(testing_quest_page):
     """ Tests a quest load fail due to semver mismatch """
+    testing_quest_page.save()
 
-    # generate a save data and make bad
-    storage_model = testing_quest.get_storage_model()
-    storage_model.version = str(DebugQuest.version.bump_major())
+    # fetch the data
+    doc = testing_quest_page.doc_ref.get()
+    data = testing_quest_page.storage_model.parse_obj(doc.to_dict())
+
+    # mess with the version
+    data.version = str(VersionInfo.parse(data.version).bump_major())
+    testing_quest_page.doc_ref.set(data.dict())
 
     # try to load with the bad version
     with pytest.raises(QuestLoadError):
-        testing_quest.load_storage_model(storage_model)
+        testing_quest_page.load()
+
+    # cleanup
+    testing_quest_page.delete()
 
 
-def test_quest_load_data_fail(testing_quest):
+def test_quest_load_data_fail(testing_quest_page):
     """ Tests a quest load fail due to data model mismatch """
+    testing_quest_page.save()
 
-    # generate a save data and make bad
-    storage_model = testing_quest.get_storage_model()
-    storage_model.serialized_data = json.dumps({"this": "nonesense"})
+    # fetch the data
+    doc = testing_quest_page.doc_ref.get()
+    data = testing_quest_page.storage_model.parse_obj(doc.to_dict())
 
-    # try to load with the bad data
+    # mess with the data
+    data.serialized_data = json.dumps({"this": "nonesense"})
+    testing_quest_page.doc_ref.set(data.dict())
+
+    # try to load with the bad version
     with pytest.raises(QuestLoadError):
-        testing_quest.load_storage_model(storage_model)
+        testing_quest_page.load()
+
+    # cleanup
+    testing_quest_page.delete()
 
 
-def test_quest_load_save(testing_quest):
+def test_quest_load_save(testing_quest_page):
     """ Tests a successful load with matching semvar """
 
     # generate a save data and edit a bit
-    storage_model = testing_quest.get_storage_model()
-    storage_model.completed_stages = [DebugQuest.Start.__name__]
+    testing_quest_page.delete()
+    assert not testing_quest_page.exists
 
-    # create a new game and load the good version
-    testing_quest.load_storage_model(storage_model)
+    testing_quest_page.save()
+    assert testing_quest_page.exists
 
-    # check it
-    check_model = testing_quest.get_storage_model()
-    assert check_model.completed_stages == storage_model.completed_stages
+    testing_quest_page.load()

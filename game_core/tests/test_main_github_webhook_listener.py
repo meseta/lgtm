@@ -13,7 +13,7 @@ import app.github_utils.github
 
 from user import User, Source
 from game import Game
-from quest import Quest
+from quest_page import QuestPage
 
 FUNCTION_SOURCE = "app/main.py"
 TEST_FILES = os.path.join(
@@ -120,4 +120,18 @@ def test_good_fork(webhook_listener_client, good_fork):
     user_id = json.loads(good_fork.payload)["forkee"]["owner"]["id"]
     user = User.from_source_id(Source.GITHUB, user_id)
     game = Game.from_user(user)
-    assert isinstance(game, Game)
+    quest = QuestPage.from_game_get_first_quest(game)
+
+    assert game.exists
+    assert quest.exists
+
+    # erase quest and run again
+    quest.delete()
+    assert not quest.exists
+
+    res = webhook_listener_client.post(
+        "/", headers=good_fork.headers, data=good_fork.payload
+    )
+    assert res.status_code == 200
+
+    assert quest.exists

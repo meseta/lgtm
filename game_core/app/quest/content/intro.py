@@ -1,5 +1,6 @@
 """ The intro quest """
 
+from typing import List
 from pydantic import BaseModel
 from semver import VersionInfo  # type:  ignore
 from ..quest import Quest, Difficulty
@@ -15,4 +16,4 @@ class IntroQuest(Quest):
     description = "The intro quest"
 
     class Start(DebugStage):
-        children = []
+        children: List[str] = []

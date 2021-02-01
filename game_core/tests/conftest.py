@@ -5,25 +5,16 @@ import string
 import random
 
 from firebase_utils import db, firestore
-from user import User, Source
+from user import User, Source, UserData
 from game import Game
-from quest import Quest, DEBUG_QUEST_KEY
-from models import UserData
+from quest_page import QuestPage
+from quest import DEBUG_QUEST_NAME
 
 
 @pytest.fixture
 def random_id():
     """ A random alphanumeric ID for various uses in tests """
     return "".join([random.choice(string.ascii_letters) for _ in range(10)])
-
-
-@pytest.fixture
-def random_user():
-    """ A random user for testing, does not write to database """
-    user_id = "test_" + "".join(
-        [random.choice(string.ascii_letters) for _ in range(10)]
-    )
-    return User.from_source_id(Source.TEST, user_id)
 
 
 @pytest.fixture(scope="package")
@@ -57,14 +48,14 @@ def testing_game(testing_user):
         [random.choice(string.ascii_letters) for _ in range(10)]
     )
 
-    game = Game.new_from_fork(testing_user, fork_url)
+    game = Game.from_user(testing_user)
+    game.set_fork_url(fork_url)
+    game.save()
     yield game
 
 
 @pytest.fixture
-def testing_quest(testing_game):
+def testing_quest_page(testing_game):
     """ A random quest for testing, cleans up afterwards """
-    QuestClass = Quest.get_by_name(DEBUG_QUEST_KEY)
-    quest = QuestClass.from_game(testing_game)
-
+    quest = QuestPage.from_game_get_quest(testing_game, DEBUG_QUEST_NAME)
     yield quest

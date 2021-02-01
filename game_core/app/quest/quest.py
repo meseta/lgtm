@@ -1,7 +1,7 @@
 """ Base Classes for quest objects """
 from __future__ import annotations
 
-from typing import List, Dict, ClassVar, Type, Generator, cast, TYPE_CHECKING
+from typing import List, Dict, ClassVar, Type, cast, TYPE_CHECKING
 
 from abc import ABC, abstractmethod
 from inspect import isclass
@@ -11,15 +11,14 @@ from structlog import get_logger
 from pydantic import ValidationError
 from semver import VersionInfo  # type:  ignore
 
-from firebase_utils import db
 from tick import TickType
 from .exceptions import QuestError, QuestLoadError, QuestDefinitionError
-from .models import Difficulty, StorageModel, QuestBaseModel
+from .models import Difficulty, QuestBaseModel
 
 
 if TYPE_CHECKING:
+    from quest_page import QuestPage  # pragma: no cover
     from .stage import Stage  # pragma: no cover
-    from game import Game  # pragma: no cover
 
 logger = get_logger(__name__)
 
@@ -38,43 +37,15 @@ def semver_safe(start: VersionInfo, dest: VersionInfo) -> bool:
 
 class Quest(ABC):
     @classmethod
-    def get_by_name(cls, name: str) -> Type[Quest]:
+    def from_name(cls, name: str, quest_page: QuestPage) -> Quest:
         from .loader import all_quests  # avoid cyclic import
 
         try:
-            return all_quests[name]
+            quest_class = all_quests[name]
         except KeyError as err:
             raise QuestError(f"No quest name {name}") from err
 
-    @classmethod
-    def get_first_quest(cls) -> Type[Quest]:
-        from .loader import FIRST_QUEST_KEY  # avoid cyclic import
-
-        return cls.get_by_name(FIRST_QUEST_KEY)
-
-    @classmethod
-    def from_game(cls, game: Game) -> Quest:
-        key = cls.make_key(game)
-        return cls(key)
-
-    @classmethod
-    def iterate_all(cls) -> Generator[Quest, None, None]:
-        docs = db.collection("quest").where("complete", "!=", True).stream()
-        for doc in docs:
-            key = doc.id
-            quest_name = cls.key_to_quest_name(key)
-            QuestClass = cls.get_by_name(quest_name)
-            quest = QuestClass(key)
-            yield quest
-
-    @classmethod
-    def make_key(cls, game: Game) -> str:
-        """ Key for referencing in database """
-        return f"{game.key}:{cls.__name__}"
-
-    @staticmethod
-    def key_to_quest_name(key: str) -> str:
-        return key.split(":")[-1]
+        return quest_class(quest_page)
 
     @property
     @abstractmethod
@@ -115,81 +86,15 @@ class Quest(ABC):
 
     # loaded player quest data
     quest_data: QuestBaseModel
-    completed_stages: List[str]
     graph: TopologicalSorter
 
-    # the quest ey in the db
-    key: str
+    # the parent object
+    quest_page: QuestPage
 
-    # whether complete
-    complete: bool
-
-    def __init__(self, key: str):
-        if not key:
-            raise ValueError("Key can't be blank")
-
-        self.key = key
-        self.load()
-
-    def exists(self) -> bool:
-        """ Whether quest exists in the database """
-        quest_doc = db.collection("quest").document(self.key).get()
-        return quest_doc.exists
-
-    def load(self) -> None:
-        """ Load data from storage """
-        quest_doc = db.collection("quest").document(self.key).get()
-
-        if quest_doc.exists:
-            try:
-                storage_model = StorageModel.parse_obj(quest_doc.to_dict())
-            except ValidationError as err:
-                raise QuestLoadError(
-                    f"{self} Storage model validation error! {err}"
-                ) from err
-
-            self.load_storage_model(storage_model)
-        else:
-            self.quest_data = self.QuestDataModel()
-            self.completed_stages = []
-            self.complete = False
-
+    def __init__(self, quest_page):
+        self.quest_page = quest_page
+        self.quest_data = self.QuestDataModel()
         self.load_stages()
-
-    def save(self) -> None:
-        """ Save data to storage """
-
-        quest_ref = db.collection("quest").document(self.key)
-        quest_ref.set(self.get_storage_model().dict())
-
-    def load_storage_model(self, storage_model: StorageModel) -> None:
-        """ Load save data back into structure """
-
-        # check save version is safe before upgrading
-        save_semver = VersionInfo.parse(storage_model.version)
-        if not semver_safe(save_semver, self.version):
-            raise QuestLoadError(
-                f"{self} Unsafe version mismatch in! {save_semver} -> {self.version}"
-            )
-
-        try:
-            self.quest_data = self.QuestDataModel.parse_raw(
-                storage_model.serialized_data
-            )
-        except ValidationError as err:
-            raise QuestLoadError(f"{self} data validation error! {err}") from err
-
-        self.completed_stages = storage_model.completed_stages
-        self.complete = storage_model.complete
-
-    def get_storage_model(self) -> StorageModel:
-        """ Updates save data with new version and output """
-        return StorageModel(
-            version=str(self.version),
-            completed_stages=self.completed_stages,
-            serialized_data=self.quest_data.json(),
-            complete=self.complete,
-        )
 
     def load_stages(self) -> None:
         """ loads the stages """
@@ -209,7 +114,30 @@ class Quest(ABC):
         except CycleError as err:
             raise QuestDefinitionError(f"{self} prepare failed! {err}") from err
 
-    def execute_stages(self, tick_type: TickType) -> None:
+    def load_raw(self, version_str: str, serialized_data: str) -> None:
+        """ Load save data back into structure """
+
+        # check save version is safe before upgrading
+        try:
+            save_semver = VersionInfo.parse(version_str)
+        except ValueError as err:
+            raise QuestLoadError(f"Invalid version string {version_str}") from err
+
+        if not semver_safe(save_semver, self.version):
+            raise QuestLoadError(
+                f"{self} Unsafe version mismatch in! {save_semver} -> {self.version}"
+            )
+
+        try:
+            self.quest_data = self.QuestDataModel.parse_raw(serialized_data)
+        except ValidationError as err:
+            raise QuestLoadError(f"{self} data validation error! {err}") from err
+
+    def save_raw(self) -> str:
+        """ Returns serialized data to save """
+        return self.quest_data.json()
+
+    def execute(self, tick_type: TickType) -> None:
         """ Executes stages, tick_type helps nodes know whether to skip certain stages """
 
         log = logger.bind(quest=self)
@@ -226,17 +154,16 @@ class Quest(ABC):
 
             for node in ready_nodes:
                 # skip if completed, avoids triggering two final stages
-                if self.complete:
+                if self.quest_page.is_quest_complete():
                     log.info("Done flag set, skipping the rest")
                     return
 
                 # completed node: TODO: just not put completed nodes into the graph?
-                if node in self.completed_stages:
+                if self.quest_page.is_stage_complete(node):
                     self.graph.done(node)
                     log.info(
                         "Node is already complete, skipping",
                         node=node,
-                        complete=self.completed_stages,
                     )
                     continue
 
@@ -254,10 +181,10 @@ class Quest(ABC):
 
                     if stage.is_done():
                         log_node.info("Stage reports done")
-                        self.completed_stages.append(node)
+                        self.quest_page.mark_stage_complete(node)
                         self.graph.done(node)
 
         log.info("Done processing node")
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(key={self.key})"
+        return f"{self.__class__.__name__}(quest_page={self.quest_page})"

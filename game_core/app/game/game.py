@@ -1,68 +1,22 @@
 """ Game entity management """
 
 from __future__ import annotations
-from typing import Union, NewType, TYPE_CHECKING
 
-from firebase_utils import db, firestore
-from quest import Quest
-from user import NoUser
-from tick import TickType
+from orm import Orm
+from user import User
 
-if TYPE_CHECKING:
-    from user import User, NoUserType  # pragma: no cover
-
-NoGameType = NewType("NoGameType", object)
-NoGame = NoGameType(object())
+from .models import GameData
 
 
-class Game:
-    @classmethod
-    def from_user(cls, user: User) -> Union[Game, NoGameType]:
-        """ Create a game from a user """
-        key = cls.make_key(user)
-        game = cls(key)
-        game.user = user
-
-        docs = db.collection("game").where("user_key", "==", user.key).stream()
-        for _ in docs:
-            return game
-        return NoGame
+class Game(Orm, collection="game", parent_orm=User):
+    data: GameData
+    storage_model = GameData
 
     @classmethod
-    def new_from_fork(cls, user: User, fork_url: str) -> Game:
-        """ Save game with fork """
-
-        if not fork_url:
-            raise ValueError("Fork can't be blank")
-
+    def from_user(cls, user: User) -> Game:
         key = cls.make_key(user)
         game = cls(key)
-        game.user = user
-
-        game_doc = db.collection("game").document(game.key).get()
-        if game_doc.exists:
-            game_doc.reference.set(
-                {
-                    "fork_url": fork_url,
-                    "user_uid": user.uid,
-                    "user_key": user.key,
-                },
-                merge=True,
-            )
-
-        else:
-            game_doc.reference.set(
-                {
-                    "fork_url": fork_url,
-                    "user_uid": user.uid,
-                    "user_key": user.key,
-                    "joined": firestore.SERVER_TIMESTAMP,
-                }
-            )
-            # db.collection("system").document("stats").update(
-            #     {"games": firestore.Increment(1)}
-            # )
-
+        game.parent_key = user.key
         return game
 
     @staticmethod
@@ -70,25 +24,5 @@ class Game:
         """ Game's key ARE user key due to 1:1 relationship """
         return user.key
 
-    key: str
-    user: Union[User, NoUserType]
-
-    def __init__(self, key: str):
-        self.key = key
-        self.user = NoUser
-
-    def assign_to_uid(self, uid: str) -> None:
-        """ Assign a user to this game """
-        doc = db.collection("game").document(self.key).get()
-        if doc.exists:
-            doc.reference.set({"user_uid": uid}, merge=True)
-
-    def start_first_quest(self) -> None:
-        """ Create starting quest if not exist """
-        QuestClass = Quest.get_first_quest()
-        quest = QuestClass.from_game(self)
-        quest.execute_stages(TickType.FULL)
-        quest.save()
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}(key={self.key})"
+    def set_fork_url(self, fork_url: str) -> None:
+        self.data.fork_url = fork_url
