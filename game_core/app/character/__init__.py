@@ -1,1 +1,2 @@
-from .character import Character, character_garry
+from .character import Character, ReactionType, character_garry
+from .exceptions import CharacterError

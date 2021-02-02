@@ -26,3 +26,6 @@ class Game(Orm, collection="game", parent_orm=User):
 
     def set_fork_url(self, fork_url: str) -> None:
         self.data.fork_url = fork_url
+
+    def get_fork_url(self) -> str:
+        return self.data.fork_url

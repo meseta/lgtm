@@ -11,6 +11,7 @@ from firebase_admin import auth  # type: ignore
 from functions_framework import create_app  # type: ignore
 
 from firebase_utils import app, db, firestore
+from character import character_garry
 from quest import Quest
 from game import Game
 from user import User, Source, UserData
@@ -18,8 +19,6 @@ from user import User, Source, UserData
 env = Env()
 FUNCTION_SOURCE = "app/main.py"
 WEB_API_KEY = env("WEB_API_KEY")
-GH_TEST_TOKEN = env("GH_TEST_TOKEN")
-GH_TEST_ID = env("GH_TEST_ID")
 
 
 @pytest.fixture(scope="module")
@@ -60,13 +59,13 @@ def test_user_token(test_auth_user):
 
 @pytest.fixture
 def user_data():
-    """ Creates test user data """
+    """ Creates test user data, we borrow garry's auth token """
     return UserData(
         profileImage="",
-        name="Yuan Gao",
-        handle="meseta",
-        id=GH_TEST_ID,
-        accessToken=GH_TEST_TOKEN,
+        name="LGTM Garry",
+        handle="LGTM-garry",
+        id=character_garry.user_id,
+        accessToken=character_garry.token,
     ).dict()
 
 
