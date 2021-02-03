@@ -1,6 +1,6 @@
 {
     "Content-Type": "application/json",
     "User-Agent": " GitHub-Hookshot/cd078e3",
-    "X-Hub-Signature": "sha1=ddcfbb60ab4b14e50593f5c20c7bf2b2d1f39b68",
-    "X-Hub-Signature-256": "sha256=55874e611503117d2f1f0139fb02eaef82f2181da1b0eb0a852c08a7f3eb359e"
+    "X-Hub-Signature": "sha1=7204dd724b60685c69f97753046755db8126a2c8",
+    "X-Hub-Signature-256": "sha256=a595109aef012479f20b265ebb2cb8c76eaf3195723c76284d75eb52f29d1edb"
 }

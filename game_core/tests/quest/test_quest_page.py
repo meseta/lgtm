@@ -46,6 +46,15 @@ def test_quest_load_fail(testing_quest_page):
     testing_quest_page.delete()
 
 
+def test_parent(testing_game, testing_quest_page):
+    """ Test creating a valid quest """
+
+    # create new game
+    parent = testing_quest_page.game
+
+    assert repr(parent) == repr(testing_game)
+
+
 def test_quest(testing_game):
     """ Test creating a valid quest """
 

@@ -84,7 +84,7 @@ class Character:
         """ Get an issue """
         return self.repo_get(repo).get_issue(number=issue_id)
 
-    def issue_post(self, repo: str, title: str, body: str) -> int:
+    def issue_create(self, repo: str, title: str, body: str) -> int:
         """ Post an issue in a repo, returns issue number """
         issue = self.github.get_repo(repo).create_issue(title=title, body=body)
         return issue.number

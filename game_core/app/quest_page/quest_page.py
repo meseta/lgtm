@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Generator
 from structlog import get_logger
 
-from orm import Orm
+from orm import Orm, OrmNotFound
 from game import Game
 
 from quest import Quest, FIRST_QUEST_NAME, QuestLoadError
@@ -50,6 +50,10 @@ class QuestPage(Orm, collection="quest", parent_orm=Game):
         super().__init__(key)
         self.quest = Quest.from_name(quest_name, self)
         self.data.quest_name = quest_name
+
+    @property
+    def game(self) -> Union[Game, OrmNotFound]:
+        return self.parent
 
     def load(self) -> None:
         """ Additionally parse the quest storage """

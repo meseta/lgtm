@@ -27,7 +27,7 @@ def test_issue_flow(random_id):
     issue_name = "Test_" + random_id
 
     # post it
-    issue_id = character_garry.issue_post(TEST_REPO, issue_name, "This is a test post")
+    issue_id = character_garry.issue_create(TEST_REPO, issue_name, "This is a test post")
     assert issue_id
 
     # check it's not closed
