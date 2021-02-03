@@ -32,6 +32,7 @@ class QuestPage(Orm, collection="quest", parent_orm=Game):
     def from_game_get_quest(cls, game: Game, quest_name: str) -> QuestPage:
         key = cls.make_key(game, quest_name)
         quest = cls(key, quest_name)
+        quest.parent_key = game.key
         return quest
 
     @classmethod
@@ -63,7 +64,7 @@ class QuestPage(Orm, collection="quest", parent_orm=Game):
             self.data.version = str(self.quest.version)
         super().save()
 
-    def execute(self, tick_type: TickType) -> None:
+    def execute(self, tick_type: TickType = TickType.FULL) -> None:
         """ Execute """
         self.quest.execute(tick_type)
 

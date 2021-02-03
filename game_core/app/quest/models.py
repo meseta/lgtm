@@ -1,10 +1,15 @@
 """ Data models for quests """
 
+from typing import Dict, Any
 from enum import Enum
 from pydantic import BaseModel, Field
 
 
 class QuestBaseModel(BaseModel):
+    stage_data: Dict[str, Any] = Field(
+        default_factory=dict, title="Storage for stage data"
+    )
+
     class Config:
         extra = "forbid"
 

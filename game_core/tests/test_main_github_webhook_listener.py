@@ -135,3 +135,6 @@ def test_good_fork(webhook_listener_client, good_fork):
     assert res.status_code == 200
 
     assert quest.exists
+
+    # cleanup, otherwise other quests will actually run this
+    quest.delete()

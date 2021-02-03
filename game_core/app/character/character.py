@@ -11,6 +11,7 @@ from google.cloud import secretmanager  # type: ignore
 from github import Github, GithubException
 from github.Issue import Issue
 from github.Repository import Repository
+from github.AuthenticatedUser import AuthenticatedUser
 from github.GithubObject import NotSet, _NotSetType as NotSetType  # type: ignore
 
 from .exceptions import CharacterError
@@ -34,7 +35,7 @@ class ReactionType(Enum):
     EYES = "eyes"
 
 
-def fetch_secret(secret_name):
+def fetch_secret(secret_name: str) -> str:
     secret_path = f"projects/{GCP_PROJECT_ID}/secrets/{secret_name}/versions/latest"
     secret = secret_client.access_secret_version(request=dict(name=secret_path))
     return secret.payload.data.decode()
@@ -60,10 +61,19 @@ class Character:
             return attr
 
     @cached_property
+    def user(self) -> AuthenticatedUser:
+        """ Get user """
+        return self.github.get_user()
+
+    @property
     def user_id(self) -> int:
         """ Get own ID """
-        user = self.github.get_user()
-        return user.id
+        return self.user.id
+
+    @property
+    def user_name(self) -> str:
+        """ Get display name """
+        return self.user.name
 
     def repo_get(self, repo: str) -> Repository:
         """ Get a repo, translating it's URL """
@@ -153,6 +163,9 @@ class Character:
         issue = self.issue_get(repo, issue_id)
         comment = issue.get_comment(comment_id)
         comment.delete()
+
+    def __repr__(self) -> str:
+        return f"Character(user_name={self.user_name})"
 
 
 character_garry = Character("github_token_garry")

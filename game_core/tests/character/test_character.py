@@ -10,6 +10,10 @@ TEST_REPO = env("TEST_REPO")
 
 def test_id():
     assert character_garry.user_id
+    assert character_garry.user_name
+
+    assert str(character_garry)
+    assert repr(character_garry)
 
 
 def test_bad_url():

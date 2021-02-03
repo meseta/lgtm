@@ -94,7 +94,6 @@ class Quest(ABC):
     def __init__(self, quest_page):
         self.quest_page = quest_page
         self.quest_data = self.QuestDataModel()
-        self.load_stages()
 
     def load_stages(self) -> None:
         """ loads the stages """
@@ -137,12 +136,13 @@ class Quest(ABC):
         """ Returns serialized data to save """
         return self.quest_data.json()
 
-    def execute(self, tick_type: TickType) -> None:
+    def execute(self, tick_type: TickType = TickType.FULL) -> None:
         """ Executes stages, tick_type helps nodes know whether to skip certain stages """
 
         log = logger.bind(quest=self)
         log.info("Begin execution")
 
+        self.load_stages()
         while self.graph.is_active():
             ready_nodes = self.graph.get_ready()
 

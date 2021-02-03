@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import List, Optional, ClassVar, Any, Callable, TYPE_CHECKING
 from abc import ABC, abstractmethod
 import operator
+from datetime import timedelta, datetime
+
 from structlog import get_logger
 
 from character import Character
@@ -51,6 +53,14 @@ class Stage(ABC):
 
     def __init__(self, quest: Quest):
         self.quest = quest
+
+    def set_stage_data(self, value: Any):
+        """ Sets stage data """
+        self.quest.quest_data.stage_data[self.__class__.__name__] = value
+
+    def get_stage_data(self, default: Any = None) -> Any:
+        """ Gets stage data """
+        return self.quest.quest_data.stage_data.get(self.__class__.__name__, default)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(quest={repr(self.quest)})"
@@ -103,6 +113,27 @@ class ConditionStage(Stage):
             retval=retval,
         )
         return retval
+
+
+class DelayStage(Stage):
+    """ For enacting a time delay """
+
+    # how much time to delay
+    delay: timedelta
+
+    def prepare(self) -> None:
+        """ On first run, insert datetime """
+        if self.get_stage_data() is None:
+            now = datetime.now().timestamp()
+            logger.info(f"Delay stage prepare", now=now)
+            self.set_stage_data(now)
+
+    def condition(self) -> bool:
+        """ Calculate whether that has elapsed """
+        target = datetime.utcfromtimestamp(self.get_stage_data(0)) + self.delay
+        now = datetime.now()
+        logger.info(f"Delay stage prepare", now=now, target=target)
+        return now > target
 
 
 class FinalStage(Stage):

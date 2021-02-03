@@ -3,7 +3,6 @@
 import pytest
 from semver import VersionInfo  # type:  ignore
 
-from tick import TickType
 from quest import Quest, Difficulty, QuestDefinitionError, DEBUG_QUEST_NAME
 from quest.stage import DebugStage
 from quest.loader import all_quests
@@ -87,7 +86,7 @@ def test_execute(testing_quest_page):
     assert not testing_quest_page.data.completed_stages
 
     # Debugquest is linear, so we expect to see only the start quest
-    testing_quest_page.execute(TickType.FULL)
+    testing_quest_page.execute()
     assert len(testing_quest_page.data.completed_stages) == len(
         testing_quest_page.quest.stages
     )
@@ -100,7 +99,7 @@ def test_resume(testing_quest_page):
     testing_quest_page.data.completed_stages = ["Start"]
 
     # resume
-    testing_quest_page.execute(TickType.FULL)
+    testing_quest_page.execute()
     assert len(testing_quest_page.data.completed_stages) == len(
         testing_quest_page.quest.stages
     )
@@ -114,5 +113,5 @@ def test_done_skip(testing_quest_page):
     testing_quest_page.mark_quest_complete()
 
     # excecution should just skip because we marked quest as complete
-    testing_quest_page.execute(TickType.FULL)
+    testing_quest_page.execute()
     assert not testing_quest_page.data.completed_stages

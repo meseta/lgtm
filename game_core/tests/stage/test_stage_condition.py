@@ -1,10 +1,9 @@
-""" Test for quest load/save handling system """
+""" Test conditional stage """
 
 import pytest
 from semver import VersionInfo  # type:  ignore
 import operator
 
-from tick import TickType
 from quest import Quest, Difficulty
 from quest.quest import QuestBaseModel
 from quest.stage import DebugStage, ConditionStage, FinalStage
@@ -43,7 +42,7 @@ class TestQuestBranching(Quest):
 def test_initial_execute(testing_quest_page):
     """  Should only manage to complete 1 stage due to missing data """
     quest = TestQuestBranching(testing_quest_page)
-    quest.execute(TickType.FULL)
+    quest.execute()
 
     assert len(testing_quest_page.data.completed_stages) == 1
     assert "Start" in testing_quest_page.data.completed_stages
@@ -55,7 +54,7 @@ def test_ending(testing_quest_page):
 
     quest = TestQuestBranching(testing_quest_page)
     quest.quest_data.value_b = quest.quest_data.value_a
-    quest.execute(TickType.FULL)
+    quest.execute()
 
     assert testing_quest_page.is_stage_complete("BranchA")
     assert testing_quest_page.is_stage_complete("EndingA")
@@ -69,7 +68,7 @@ def test_ending2(testing_quest_page):
 
     quest = TestQuestBranching(testing_quest_page)
     quest.quest_data.value_a = 100
-    quest.execute(TickType.FULL)
+    quest.execute()
 
     assert testing_quest_page.is_stage_complete("BranchB")
     assert testing_quest_page.is_stage_complete("EndingB")
