@@ -5,6 +5,7 @@ from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
+from textwrap import dedent
 
 from environs import Env
 from google.cloud import secretmanager  # type: ignore
@@ -66,9 +67,9 @@ class Character:
         return self.github.get_user()
 
     @property
-    def user_id(self) -> int:
+    def user_id(self) -> str:
         """ Get own ID """
-        return self.user.id
+        return str(self.user.id)
 
     @property
     def user_name(self) -> str:
@@ -78,24 +79,24 @@ class Character:
     def repo_get(self, repo: str) -> Repository:
         """ Get a repo, translating it's URL """
         repo_name = "/".join(repo.split("/")[-2:])
-        return self.github.get_repo(repo)
+        return self.github.get_repo(repo_name)
 
-    def issue_get(self, repo: str, issue_id: int) -> Issue:
+    def issue_get(self, repo: str, issue_id: str) -> Issue:
         """ Get an issue """
-        return self.repo_get(repo).get_issue(number=issue_id)
+        return self.repo_get(repo).get_issue(number=int(issue_id))
 
-    def issue_create(self, repo: str, title: str, body: str) -> int:
+    def issue_create(self, repo: str, title: str, body: str) -> str:
         """ Post an issue in a repo, returns issue number """
-        issue = self.github.get_repo(repo).create_issue(title=title, body=body)
-        return issue.number
+        issue = self.repo_get(repo).create_issue(title=title, body=dedent(body))
+        return str(issue.number)
 
-    def issue_close(self, repo: str, issue_id: int) -> None:
+    def issue_close(self, repo: str, issue_id: str) -> None:
         """ Close an issue in a repo """
         issue = self.issue_get(repo, issue_id)
         issue.edit(state="closed")
 
     def issue_reaction_get_from_user(
-        self, repo: str, issue_id: int, user_id: int
+        self, repo: str, issue_id: str, user_id: str
     ) -> List[ReactionType]:
         """ Get reactions on an issue's main post """
         issue = self.issue_get(repo, issue_id)
@@ -103,69 +104,66 @@ class Character:
         return [
             ReactionType(reaction.content)
             for reaction in reactions
-            if reaction.user.id == user_id
+            if str(reaction.user.id) == user_id
         ]
 
     def issue_reaction_create(
-        self, repo: str, issue_id: int, reaction: ReactionType
+        self, repo: str, issue_id: str, reaction: ReactionType
     ) -> None:
         """ Create a reaction on an issue """
         issue = self.issue_get(repo, issue_id)
         issue.create_reaction(reaction.value)
 
     def issue_comment_get_from_user_since(
-        self, repo: str, issue_id: int, user_id: int, since: Union[datetime, NotSetType]
-    ) -> Dict[int, str]:
+        self, repo: str, issue_id: str, user_id: str, since: Union[datetime, NotSetType]
+    ) -> Dict[str, str]:
         """ Get comment body text from a user on issue since date, presented as a dictionary with id:body """
         issue = self.issue_get(repo, issue_id)
         comments = issue.get_comments(since=since)
         return {
-            comment.id: comment.body
+            str(comment.id): comment.body
             for comment in comments
-            if comment.user.id == user_id
+            if str(comment.user.id) == user_id
         }
 
     def issue_comment_get_from_user(
-        self, repo: str, issue_id: int, user_id: int
-    ) -> Dict[int, str]:
+        self, repo: str, issue_id: str, user_id: str
+    ) -> Dict[str, str]:
         """ Get comment body text from a user on issue """
         return self.issue_comment_get_from_user_since(repo, issue_id, user_id, NotSet)
 
-    def issue_comment_create(self, repo: str, issue_id: int, body: str) -> int:
+    def issue_comment_create(self, repo: str, issue_id: str, body: str) -> str:
         """ Posts a comment, returning comment ID """
         issue = self.issue_get(repo, issue_id)
-        comment = issue.create_comment(body)
-        return comment.id
+        comment = issue.create_comment(dedent(body))
+        return str(comment.id)
 
     def issue_comment_reaction_create(
-        self, repo: str, issue_id: int, comment_id: int, reaction: ReactionType
+        self, repo: str, issue_id: str, comment_id: str, reaction: ReactionType
     ) -> None:
         """ Set a reaction on a comment """
         issue = self.issue_get(repo, issue_id)
-        comment = issue.get_comment(comment_id)
+        comment = issue.get_comment(int(comment_id))
         comment.create_reaction(reaction.value)
 
     def issue_comment_reactions_get_from_user(
-        self, repo: str, issue_id: int, comment_id: int, user_id: int
+        self, repo: str, issue_id: str, comment_id: str, user_id: str
     ) -> List[ReactionType]:
         """ Get reactions for a particular coment from a user """
         issue = self.issue_get(repo, issue_id)
-        comment = issue.get_comment(comment_id)
+        comment = issue.get_comment(int(comment_id))
         reactions = comment.get_reactions()
         return [
             ReactionType(reaction.content)
             for reaction in reactions
-            if reaction.user.id == user_id
+            if str(reaction.user.id) == user_id
         ]
 
-    def issue_comment_delete(self, repo: str, issue_id: int, comment_id: int) -> None:
+    def issue_comment_delete(self, repo: str, issue_id: str, comment_id: str) -> None:
         """ Delete a comment """
         issue = self.issue_get(repo, issue_id)
-        comment = issue.get_comment(comment_id)
+        comment = issue.get_comment(int(comment_id))
         comment.delete()
 
     def __repr__(self) -> str:
         return f"Character(user_name={self.user_name})"
-
-
-character_garry = Character("github_token_garry")

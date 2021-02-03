@@ -6,6 +6,8 @@ from typing import List, Optional, ClassVar, Any, Callable, TYPE_CHECKING
 from abc import ABC, abstractmethod
 import operator
 from datetime import timedelta, datetime
+from re import Pattern
+import random
 
 from structlog import get_logger
 
@@ -43,9 +45,16 @@ class Stage(ABC):
         """ Function that will decide whether to execute """
         return True
 
+    def fast_condition(self) -> bool:
+        """ Fast condition checks """
+        return self.condition()
+
     def execute(self) -> None:
         """ Run the stage """
         return
+
+    def fast_execute(self) -> None:
+        self.execute()
 
     def is_done(self) -> bool:
         """ Returns whether quest was completed """
@@ -76,6 +85,10 @@ class DebugStage(Stage):
     def execute(self) -> None:
         """ Print for debug purposes """
         logger.info(f"DEBUG STAGE EXECUTE OF {self.quest}")
+
+    def fast_execute(self) -> None:
+        """ Print for debug purposes """
+        logger.info(f"DEBUG STAGE FAST_EXECUTE OF {self.quest}")
 
 
 class ConditionStage(Stage):
@@ -118,8 +131,11 @@ class ConditionStage(Stage):
 class DelayStage(Stage):
     """ For enacting a time delay """
 
-    # how much time to delay
-    delay: timedelta
+    @property
+    @abstractmethod
+    def delay(cls) -> timedelta:
+        """ how much time to delay """
+        return NotImplemented
 
     def prepare(self) -> None:
         """ On first run, insert datetime """
@@ -145,21 +161,251 @@ class FinalStage(Stage):
     def execute(self) -> None:
         self.quest.quest_page.mark_quest_complete()
         logger.info(f"Final stage")
+        self.set_stage_data(datetime.now().timestamp())
 
 
 class CreateIssueStage(Stage):
     """ This stage posts a new issue to a user's fork """
 
-    # which character will post the issue
-    character: ClassVar[Character]
-
+    @property
     @abstractmethod
-    def create_message(cls) -> str:
-        """ Should return the message to be posted """
+    def character(cls) -> Character:
+        """ Which character will post the issue """
         return NotImplemented
+
+    @property
+    @abstractmethod
+    def issue_title(cls) -> str:
+        """ Issue title """
+        return NotImplemented
+
+    @property
+    @abstractmethod
+    def issue_body(cls) -> str:
+        """ Issue main body """
+        return NotImplemented
+
+    # variable to store resulting issue ID in for later
+    issue_id_variable: Optional[int] = None
 
     def execute(self) -> None:
         """ Post the issue to the fork """
-        # self.character.create_issue(self.quest)
+        game = self.quest.quest_page.game
+        game.load()
+        fork_url = game.data.fork_url
 
-        logger.info("Creating issue")
+        logger.info("Creating issue", title=self.issue_title, fork_url=fork_url)
+        issue_id = self.character.issue_create(
+            fork_url, self.issue_title, self.issue_body
+        )
+
+        if self.issue_id_variable:
+            logger.info(
+                "Storing issue Id in variable",
+                issue_id=issue_id,
+                variable=self.issue_id_variable,
+            )
+            setattr(self.quest.quest_data, self.issue_id_variable, issue_id)
+
+
+class CreateIssueCommentsStage(Stage):
+    """ This stage posts a comment to an existing issue to a user's fork """
+
+    @property
+    @abstractmethod
+    def character(cls) -> Character:
+        """ Which character will post the comment """
+        return NotImplemented
+
+    @property
+    @abstractmethod
+    def issue_id_variable(cls) -> int:
+        """ Variable containing the ID of the issue to use """
+        return NotImplemented
+
+    @property
+    @abstractmethod
+    def comment_body(cls) -> str:
+        """ Issue main body """
+        return NotImplemented
+
+    # variable to store resulting comment ID in for later
+    comment_id_variable: Optional[str] = None
+
+    # variable to store datetime of comment
+    comment_datetime_variable: Optional[str] = None
+
+    def execute(self) -> None:
+        """ Post the issue to the fork """
+        game = self.quest.quest_page.game
+        game.load()
+        fork_url = game.data.fork_url
+
+        issue_id = getattr(self.quest.quest_data, self.issue_id_variable)
+
+        logger.info("Creating comment", issue_id=issue_id, fork_url=fork_url)
+        comment_id = self.character.issue_comment_create(
+            fork_url, issue_id, self.comment_body
+        )
+
+        if self.comment_id_variable:
+            logger.info(
+                "Storing comment Id in variable",
+                comment_id=comment_id,
+                variable=self.comment_id_variable,
+            )
+            setattr(self.quest.quest_data, self.comment_id_variable, comment_id)
+
+        if self.comment_datetime_variable:
+            setattr(
+                self.quest.quest_data, self.comment_datetime_variable, datetime.now()
+            )
+
+
+class CreateIssueConversationStage(Stage):
+    """ This stage posts multiple comment to an existing issue to a user's fork """
+
+    @property
+    @abstractmethod
+    def character_comment_pairs(cls) -> List[Tuple[Character, str]]:
+        """ Pairs of characters and comments to post """
+        return NotImplemented
+
+    @property
+    @abstractmethod
+    def issue_id_variable(cls) -> int:
+        """ Variable containing the ID of the issue to use """
+        return NotImplemented
+
+    # variable to store last comment ID in for later
+    comment_id_variable: Optional[str] = None
+
+    # variable to store datetime of comment
+    comment_datetime_variable: Optional[str] = None
+
+    def execute(self) -> None:
+        """ Post the issue to the fork """
+        game = self.quest.quest_page.game
+        game.load()
+        fork_url = game.data.fork_url
+
+        issue_id = getattr(self.quest.quest_data, self.issue_id_variable)
+
+        logger.info("Creating comments", issue_id=issue_id, fork_url=fork_url)
+        for character, body in self.character_comment_pairs:
+            comment_id = character.issue_comment_create(fork_url, issue_id, body)
+
+        if self.comment_id_variable:
+            logger.info(
+                "Storing comment Id in variable",
+                comment_id=comment_id,
+                variable=self.comment_id_variable,
+            )
+            setattr(self.quest.quest_data, self.comment_id_variable, comment_id)
+
+        if self.comment_datetime_variable:
+            setattr(
+                self.quest.quest_data, self.comment_datetime_variable, datetime.now()
+            )
+
+
+class CheckIssueCommentReply(Stage):
+    """ Check issues for reply """
+
+    @property
+    @abstractmethod
+    def character(cls) -> Character:
+        """ Which character will do the check and reply, character needs permission for the repo """
+        return NotImplemented
+
+    @property
+    @abstractmethod
+    def regex_pattern(cls) -> Pattern:
+        """ Compiled regex pattern using re.compile() """
+        return NotImplemented
+
+    @property
+    @abstractmethod
+    def issue_id_variable(cls) -> int:
+        """ Variable containing the ID of the issue to use """
+        return NotImplemented
+
+    # A list of possible responses
+    incorrect_responses: List[str] = []
+
+    # variable to store matching group values in
+    result_groups_variable: Optional[str] = None
+
+    # variable to store matching id in in
+    result_id_variable: Optional[str] = None
+
+    # variable to get check since from
+    comment_datetime_variable: Optional[str] = None
+
+    def fast_condition(self) -> bool:
+        """If hasn't been run before, run once, otherwise fail to avoid hitting github API too much,
+        letting notification scan process run this quest when it receives a notification"""
+
+        if self.get_stage_data() is None:
+            return self.condition()
+        return False
+
+    def condition(self) -> bool:
+        """ Check messages """
+        game = self.quest.quest_page.game
+        game.load()
+        fork_url = game.data.fork_url
+        user = game.parent
+        user.load()
+        user_id = user.data.id
+
+        issue_id = getattr(self.quest.quest_data, self.issue_id_variable)
+
+        # use either last runtime (saved in stage data), or otherwise last comment datetime variable provided
+        check_datetime = datetime.utcfromtimestamp(self.get_stage_data(0))
+        if self.comment_datetime_variable is not None:
+            check_datetime = max(
+                check_datetime,
+                getattr(self.quest.quest_data, self.comment_datetime_variable),
+            )
+
+        logger.info(
+            "Fetching comments",
+            user_id=user_id,
+            issue_id=issue_id,
+            fork_url=fork_url,
+            check_datetime=check_datetime,
+        )
+        if check_datetime is None:
+            comments = self.character.issue_comment_get_from_user(
+                fork_url, issue_id, user_id
+            )
+        else:
+            comments = self.character.issue_comment_get_from_user_since(
+                fork_url, issue_id, user_id, check_datetime
+            )
+        logger.info("Got comments", count=len(comments))
+        self.set_stage_data(datetime.now().timestamp())
+
+        for comment_id, comment_body in comments.items():
+            results = self.regex_pattern.match(comment_body)
+            if results:
+
+                logger.info("Got comment match on pattern!", comment_id=comment_id)
+                if self.result_groups_variable:
+                    setattr(
+                        self.quest.quest_data,
+                        self.result_groups_variable,
+                        results.groups(),
+                    )
+                if self.result_id_variable:
+                    setattr(self.quest.quest_data, self.result_id_variable, comment_id)
+                return True
+
+        # issue incorrect response
+        if len(comments) and self.incorrect_responses:
+            comment_id = self.character.issue_comment_create(
+                fork_url, issue_id, random.choice(self.incorrect_responses)
+            )
+
+        return False

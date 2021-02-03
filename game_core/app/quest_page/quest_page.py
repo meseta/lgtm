@@ -42,17 +42,17 @@ class QuestPage(Orm, collection="quest", parent_orm=Game):
         for doc in docs:
             data = cls.storage_model.parse_obj(doc.to_dict())
             quest_page = cls(doc.id, data.quest_name)
-            quest_page.data = data
-            quest_page.quest.load_raw(data.version, data.serialized_data)
+            quest_page.load()
             yield quest_page
 
-    def __init__(self, key: str, quest_name):
+    def __init__(self, key: str, quest_name: str):
         super().__init__(key)
         self.quest = Quest.from_name(quest_name, self)
         self.data.quest_name = quest_name
 
     @property
     def game(self) -> Union[Game, OrmNotFound]:
+        """ Parent object is Game """
         return self.parent
 
     def load(self) -> None:

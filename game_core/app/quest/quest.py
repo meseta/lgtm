@@ -6,6 +6,7 @@ from typing import List, Dict, ClassVar, Type, cast, TYPE_CHECKING
 from abc import ABC, abstractmethod
 from inspect import isclass
 from graphlib import TopologicalSorter, CycleError
+from datetime import datetime
 
 from structlog import get_logger
 from pydantic import ValidationError
@@ -175,14 +176,23 @@ class Quest(ABC):
                 stage = StageClass(self)
                 stage.prepare()
 
-                if stage.condition():
+                if tick_type == TickType.FAST:
+                    condition = stage.fast_condition
+                    execute = stage.fast_execute
+                else:
+                    condition = stage.condition
+                    execute = stage.execute
+
+                if condition():
                     log_node.info("Condition check passed, executing")
-                    stage.execute()
+                    execute()
 
                     if stage.is_done():
                         log_node.info("Stage reports done")
                         self.quest_page.mark_stage_complete(node)
                         self.graph.done(node)
+
+                    self.quest_data.last_run = datetime.now()
 
         log.info("Done processing node")
 
